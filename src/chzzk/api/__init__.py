@@ -6,6 +6,7 @@ from chzzk.api.channel import AsyncChannelService, ChannelService
 from chzzk.api.chat import AsyncChatService, ChatService
 from chzzk.api.live import AsyncLiveService, LiveService
 from chzzk.api.restriction import AsyncRestrictionService, RestrictionService
+from chzzk.api.session import AsyncSessionService, SessionService
 from chzzk.api.user import AsyncUserService, UserService
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "AsyncChatService",
     "AsyncLiveService",
     "AsyncRestrictionService",
+    "AsyncSessionService",
     "AsyncUserService",
     "BaseService",
     "CategoryService",
@@ -22,5 +24,6 @@ __all__ = [
     "ChatService",
     "LiveService",
     "RestrictionService",
+    "SessionService",
     "UserService",
 ]
