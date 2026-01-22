@@ -91,6 +91,7 @@ def index() -> str:
                 <li><a href="/me">Get My Info (/me)</a></li>
                 <li><a href="/live">Live Broadcasts (/live)</a></li>
                 <li><a href="/live-setting">My Live Setting (/live-setting)</a></li>
+                <li><a href="/sessions">My Sessions (/sessions)</a></li>
             </ul>
             <hr>
             <a href="/refresh">Refresh Token</a> |
@@ -378,6 +379,70 @@ def live_setting() -> str:
             <p><strong>Default Title:</strong> {setting.default_live_title or "N/A"}</p>
             <p><strong>Category:</strong> {category_html}</p>
             <p><strong>Tags:</strong> {tags_str}</p>
+            <hr>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+    except ChzzkAPIError as e:
+        return f"""
+        <html>
+        <head><title>API Error</title></head>
+        <body>
+            <h1>API Error</h1>
+            <p>{e!s}</p>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+
+
+@app.route("/sessions")
+def sessions() -> str:
+    """Get the current user's session list."""
+    if not client.is_authenticated:
+        return """
+        <html>
+        <head><title>Not Authenticated</title></head>
+        <body>
+            <h1>Not Authenticated</h1>
+            <p>Please login first</p>
+            <a href="/login">Login</a>
+        </body>
+        </html>
+        """
+
+    try:
+        session_list = client.session.get_sessions()
+        sessions_html = ""
+        for session in session_list:
+            events_html = ""
+            for event in session.subscribed_events:
+                events_html += f"<li>{event.event_type} (Channel: {event.channel_id})</li>"
+            if not events_html:
+                events_html = "<li><em>No subscribed events</em></li>"
+
+            disconnected = session.disconnected_date or "Still connected"
+            sessions_html += f"""
+            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+                <p><strong>Session Key:</strong> {session.session_key}</p>
+                <p><strong>Connected:</strong> {session.connected_date}</p>
+                <p><strong>Disconnected:</strong> {disconnected}</p>
+                <p><strong>Subscribed Events:</strong></p>
+                <ul>{events_html}</ul>
+            </div>
+            """
+
+        if not session_list:
+            sessions_html = "<p>No active sessions.</p>"
+
+        return f"""
+        <html>
+        <head><title>My Sessions</title></head>
+        <body>
+            <h1>My Sessions</h1>
+            <p>Showing {len(session_list)} session(s)</p>
+            {sessions_html}
             <hr>
             <a href="/">Back to Home</a>
         </body>
