@@ -123,6 +123,60 @@ class HTTPClient:
 
         return _extract_content(response.json())
 
+    def put(
+        self,
+        url: str,
+        *,
+        json: dict[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Send a PUT request and return JSON response."""
+        response = self._client.put(url, json=json, headers=headers)
+
+        if response.status_code >= 400:
+            _handle_error_response(response)
+
+        if response.status_code == 204 or not response.content:
+            return {}
+
+        return _extract_content(response.json())
+
+    def patch(
+        self,
+        url: str,
+        *,
+        json: dict[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Send a PATCH request and return JSON response."""
+        response = self._client.patch(url, json=json, headers=headers)
+
+        if response.status_code >= 400:
+            _handle_error_response(response)
+
+        if response.status_code == 204 or not response.content:
+            return {}
+
+        return _extract_content(response.json())
+
+    def delete(
+        self,
+        url: str,
+        *,
+        json: dict[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Send a DELETE request and return JSON response."""
+        response = self._client.request("DELETE", url, json=json, headers=headers)
+
+        if response.status_code >= 400:
+            _handle_error_response(response)
+
+        if response.status_code == 204 or not response.content:
+            return {}
+
+        return _extract_content(response.json())
+
     def close(self) -> None:
         """Close the HTTP client."""
         self._client.close()
@@ -186,6 +240,60 @@ class AsyncHTTPClient:
 
         if response.status_code >= 400:
             _handle_error_response(response)
+
+        return _extract_content(response.json())
+
+    async def put(
+        self,
+        url: str,
+        *,
+        json: dict[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Send a PUT request and return JSON response."""
+        response = await self._client.put(url, json=json, headers=headers)
+
+        if response.status_code >= 400:
+            _handle_error_response(response)
+
+        if response.status_code == 204 or not response.content:
+            return {}
+
+        return _extract_content(response.json())
+
+    async def patch(
+        self,
+        url: str,
+        *,
+        json: dict[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Send a PATCH request and return JSON response."""
+        response = await self._client.patch(url, json=json, headers=headers)
+
+        if response.status_code >= 400:
+            _handle_error_response(response)
+
+        if response.status_code == 204 or not response.content:
+            return {}
+
+        return _extract_content(response.json())
+
+    async def delete(
+        self,
+        url: str,
+        *,
+        json: dict[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Send a DELETE request and return JSON response."""
+        response = await self._client.request("DELETE", url, json=json, headers=headers)
+
+        if response.status_code >= 400:
+            _handle_error_response(response)
+
+        if response.status_code == 204 or not response.content:
+            return {}
 
         return _extract_content(response.json())
 
