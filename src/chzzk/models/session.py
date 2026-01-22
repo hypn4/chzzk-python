@@ -110,7 +110,7 @@ class ChatEvent(BaseModel):
     content: str
     emojis: dict[str, str] = Field(default_factory=dict)
     message_time: int = Field(alias="messageTime")
-    user_role_code: UserRoleCode = Field(alias="userRoleCode")
+    user_role_code: UserRoleCode | None = Field(default=None, alias="userRoleCode")
 
     model_config = {"populate_by_name": True}
 
