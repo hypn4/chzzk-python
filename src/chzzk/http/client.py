@@ -94,11 +94,12 @@ class HTTPClient:
         self,
         url: str,
         *,
+        params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         """Send a POST request and return JSON response."""
-        response = self._client.post(url, json=json, headers=headers)
+        response = self._client.post(url, params=params, json=json, headers=headers)
 
         if response.status_code >= 400:
             _handle_error_response(response)
@@ -214,11 +215,12 @@ class AsyncHTTPClient:
         self,
         url: str,
         *,
+        params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         """Send a POST request and return JSON response."""
-        response = await self._client.post(url, json=json, headers=headers)
+        response = await self._client.post(url, params=params, json=json, headers=headers)
 
         if response.status_code >= 400:
             _handle_error_response(response)
