@@ -8,3 +8,26 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Environment variables (keep .env.example)
+.env
+examples/.env
+
+# Token storage
+.chzzk_token.json
+*_token.json
+
+# Testing & Linting
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
