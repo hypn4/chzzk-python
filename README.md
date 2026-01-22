@@ -1,0 +1,284 @@
+# chzzk-python
+
+[![Python 3.14+](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Unofficial Python SDK for Chzzk (NAVER Live Streaming Platform) API
+
+[한국어](README_KO.md)
+
+## Installation
+
+```bash
+# Using uv (recommended)
+uv add chzzk-python
+
+# Using pip
+pip install chzzk-python
+```
+
+## Quick Start
+
+```python
+from chzzk import ChzzkClient, FileTokenStorage
+
+# Create client with OAuth support
+client = ChzzkClient(
+    client_id="your-client-id",
+    client_secret="your-client-secret",
+    redirect_uri="http://localhost:8080/callback",
+    token_storage=FileTokenStorage("token.json"),
+)
+
+# Generate authorization URL
+auth_url, state = client.get_authorization_url()
+# User visits auth_url and authorizes the app
+
+# Exchange code for token (after OAuth callback)
+token = client.authenticate(code="auth-code", state=state)
+
+# Use the API
+user = client.user.get_me()
+print(f"Channel: {user.channel_name}")
+```
+
+## API Categories & Implementation Status
+
+| Category | Status | Description |
+|----------|--------|-------------|
+| **Authorization** | ✅ Implemented | OAuth 2.0, Token issue/refresh/revoke |
+| **User** | ✅ Implemented | Get logged-in user info |
+| **Channel** | ✅ Implemented | Channel info, managers, followers, subscribers |
+| **Category** | ✅ Implemented | Category search |
+| **Live** | ✅ Implemented | Live list, stream key, broadcast settings |
+| **Chat** | ✅ Implemented | Send messages, announcements, chat settings |
+| **Session** | ✅ Implemented | Session create/list, event subscription |
+| **Restriction** | ✅ Implemented | Activity restriction list management |
+| **Drops** | ❌ Not Implemented | - |
+| **Webhook Event** | ❌ Not Implemented | - |
+
+## Features
+
+### Sync/Async Support
+
+Both synchronous and asynchronous clients are available:
+
+```python
+# Synchronous
+from chzzk import ChzzkClient
+
+with ChzzkClient(client_id="...", client_secret="...") as client:
+    user = client.user.get_me()
+
+# Asynchronous
+from chzzk import AsyncChzzkClient
+
+async with AsyncChzzkClient(client_id="...", client_secret="...") as client:
+    user = await client.user.get_me()
+```
+
+### Token Storage
+
+Multiple token storage options:
+
+```python
+from chzzk import InMemoryTokenStorage, FileTokenStorage, CallbackTokenStorage
+
+# In-memory (default)
+storage = InMemoryTokenStorage()
+
+# File-based persistence
+storage = FileTokenStorage("token.json")
+
+# Custom callback
+storage = CallbackTokenStorage(
+    get_callback=lambda: load_from_db(),
+    save_callback=lambda token: save_to_db(token),
+    delete_callback=lambda: delete_from_db(),
+)
+```
+
+### Realtime Events
+
+Receive chat, donation, and subscription events in realtime:
+
+```python
+from chzzk import ChzzkClient, ChatEvent, DonationEvent, SubscriptionEvent
+
+client = ChzzkClient(...)
+event_client = client.create_event_client()
+
+@event_client.on_chat
+def on_chat(event: ChatEvent):
+    print(f"{event.profile.nickname}: {event.content}")
+
+@event_client.on_donation
+def on_donation(event: DonationEvent):
+    print(f"{event.donator_nickname} donated {event.pay_amount}won")
+
+@event_client.on_subscription
+def on_subscription(event: SubscriptionEvent):
+    print(f"{event.subscriber_nickname} subscribed!")
+
+# Connect and subscribe
+event_client.connect()
+event_client.subscribe_chat()
+event_client.subscribe_donation()
+event_client.subscribe_subscription()
+event_client.run_forever()
+```
+
+## Usage Examples
+
+### OAuth Authentication Flow
+
+```python
+from chzzk import ChzzkClient, FileTokenStorage
+
+client = ChzzkClient(
+    client_id="your-client-id",
+    client_secret="your-client-secret",
+    redirect_uri="http://localhost:8080/callback",
+    token_storage=FileTokenStorage("token.json"),
+    auto_refresh=True,  # Automatically refresh expired tokens
+)
+
+# 1. Generate authorization URL
+auth_url, state = client.get_authorization_url()
+print(f"Visit: {auth_url}")
+
+# 2. After user authorizes, exchange code for token
+token = client.authenticate(code="received-code", state=state)
+
+# 3. Refresh token manually if needed
+new_token = client.refresh_token()
+
+# 4. Revoke token on logout
+client.revoke_token()
+```
+
+### Channel & Live Information
+
+```python
+# Get channel info
+channel = client.channel.get_channel("channel-id")
+print(f"Channel: {channel.channel_name}")
+print(f"Description: {channel.channel_description}")
+
+# Get followers
+followers = client.channel.get_followers(size=20)
+for follower in followers.data:
+    print(f"Follower: {follower.nickname}")
+
+# Get live broadcasts
+lives = client.live.get_lives(size=10)
+for live in lives.data:
+    print(f"{live.channel_name}: {live.live_title} ({live.concurrent_user_count} viewers)")
+
+# Get/Update live settings
+setting = client.live.get_setting()
+client.live.update_setting(default_live_title="My Stream Title")
+```
+
+### Chat Messages
+
+```python
+# Send chat message
+client.chat.send_message(channel_id="channel-id", message="Hello!")
+
+# Set chat announcement
+client.chat.set_notice(
+    channel_id="channel-id",
+    message="Welcome to the stream!",
+)
+
+# Get/Update chat settings
+settings = client.chat.get_settings(channel_id="channel-id")
+client.chat.update_settings(
+    channel_id="channel-id",
+    chat_available_group="FOLLOWER",
+)
+```
+
+### Async Example
+
+```python
+import asyncio
+from chzzk import AsyncChzzkClient, FileTokenStorage
+
+async def main():
+    async with AsyncChzzkClient(
+        client_id="your-client-id",
+        client_secret="your-client-secret",
+        redirect_uri="http://localhost:8080/callback",
+        token_storage=FileTokenStorage("token.json"),
+    ) as client:
+        # Get user info
+        user = await client.user.get_me()
+        print(f"Channel: {user.channel_name}")
+
+        # Get live broadcasts
+        lives = await client.live.get_lives(size=10)
+        for live in lives.data:
+            print(f"{live.channel_name}: {live.live_title}")
+
+asyncio.run(main())
+```
+
+## Exception Handling
+
+```python
+from chzzk import (
+    ChzzkError,              # Base exception
+    ChzzkAPIError,           # API error response
+    AuthenticationError,     # 401 errors
+    InvalidTokenError,       # Invalid/expired token
+    InvalidClientError,      # Invalid client credentials
+    ForbiddenError,          # 403 errors
+    NotFoundError,           # 404 errors
+    RateLimitError,          # 429 errors
+    ServerError,             # 5xx errors
+    TokenExpiredError,       # Token expired, need re-auth
+    InvalidStateError,       # OAuth state mismatch
+    SessionError,            # Session-related errors
+    SessionConnectionError,  # Socket.IO connection failed
+    SessionLimitExceededError,  # Max session limit exceeded
+    EventSubscriptionError,  # Event subscription failed
+)
+
+try:
+    user = client.user.get_me()
+except InvalidTokenError:
+    # Token is invalid or expired
+    token = client.refresh_token()
+except RateLimitError:
+    # Rate limit exceeded, wait and retry
+    time.sleep(60)
+except ChzzkAPIError as e:
+    print(f"API Error: [{e.status_code}] {e.error_code}: {e.message}")
+```
+
+## Examples
+
+See the [examples](examples/) directory for complete working examples:
+
+- `oauth_server.py` - OAuth authentication with Flask
+- `realtime_chat.py` - Realtime chat/donation/subscription events (sync)
+- `realtime_chat_async.py` - Realtime events (async)
+- `session_management.py` - Session management example
+
+## API Reference
+
+For detailed API documentation, see the [Official Chzzk API Documentation](https://chzzk.gitbook.io/chzzk).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Disclaimer
+
+This is an unofficial SDK and is not affiliated with NAVER or Chzzk. Use at your own risk.
