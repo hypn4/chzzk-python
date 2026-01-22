@@ -23,6 +23,17 @@ DEFAULT_TIMEOUT = 30.0
 USER_AGENT = "chzzk-python/0.1.0"
 
 
+def _extract_content(data: Any) -> Any:
+    """Extract content from Chzzk API response wrapper.
+
+    Chzzk API wraps responses in { code, message, content }.
+    This function extracts the actual content.
+    """
+    if isinstance(data, dict) and "content" in data:
+        return data["content"]
+    return data
+
+
 def _handle_error_response(response: httpx.Response) -> None:
     """Raise appropriate exception based on response status and content."""
     status_code = response.status_code
@@ -95,7 +106,7 @@ class HTTPClient:
         if response.status_code == 204 or not response.content:
             return {}
 
-        return response.json()
+        return _extract_content(response.json())
 
     def get(
         self,
@@ -110,7 +121,7 @@ class HTTPClient:
         if response.status_code >= 400:
             _handle_error_response(response)
 
-        return response.json()
+        return _extract_content(response.json())
 
     def close(self) -> None:
         """Close the HTTP client."""
@@ -161,7 +172,7 @@ class AsyncHTTPClient:
         if response.status_code == 204 or not response.content:
             return {}
 
-        return response.json()
+        return _extract_content(response.json())
 
     async def get(
         self,
@@ -176,7 +187,7 @@ class AsyncHTTPClient:
         if response.status_code >= 400:
             _handle_error_response(response)
 
-        return response.json()
+        return _extract_content(response.json())
 
     async def close(self) -> None:
         """Close the HTTP client."""
