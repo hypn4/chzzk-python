@@ -1,7 +1,7 @@
 """Chzzk OAuth Example Server.
 
 A simple Flask server demonstrating the OAuth 2.0 authorization code flow
-with the Chzzk Python SDK.
+with the Chzzk Python SDK, including API usage examples.
 
 Usage:
     1. Copy .env.example to .env and fill in your credentials
@@ -17,7 +17,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, redirect, request
 
-from chzzk import ChzzkOAuth, FileTokenStorage, InvalidStateError, TokenExpiredError
+from chzzk import (
+    ChzzkAPIError,
+    ChzzkClient,
+    FileTokenStorage,
+    InvalidStateError,
+    TokenExpiredError,
+)
 
 # Load environment variables from .env file
 load_dotenv(Path(__file__).parent / ".env")
@@ -27,6 +33,7 @@ CLIENT_ID = os.environ.get("CHZZK_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("CHZZK_CLIENT_SECRET", "")
 REDIRECT_URI = os.environ.get("CHZZK_REDIRECT_URI", "http://localhost:8080/callback")
 TOKEN_FILE = Path(os.environ.get("CHZZK_TOKEN_FILE", str(Path.home() / ".chzzk_token.json")))
+PORT = int(os.environ.get("CHZZK_PORT", "8080"))
 
 if not CLIENT_ID or not CLIENT_SECRET:
     print("Error: CHZZK_CLIENT_ID and CHZZK_CLIENT_SECRET must be set")
@@ -36,32 +43,55 @@ if not CLIENT_ID or not CLIENT_SECRET:
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize OAuth client with file-based token storage
-oauth = ChzzkOAuth(
+# Initialize Chzzk client with file-based token storage
+client = ChzzkClient(
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
     redirect_uri=REDIRECT_URI,
     token_storage=FileTokenStorage(TOKEN_FILE),
+    auto_refresh=True,
 )
 
 
 @app.route("/")
 def index() -> str:
     """Home page with login button or token info."""
-    token = oauth.get_token()
+    token = client.get_token()
 
     if token:
+        # Try to get user info
+        user_info_html = ""
+        try:
+            user = client.user.get_me()
+            user_info_html = f"""
+            <h3>User Info</h3>
+            <p><strong>Channel ID:</strong> {user.channel_id}</p>
+            <p><strong>Channel Name:</strong> {user.channel_name}</p>
+            """
+        except ChzzkAPIError as e:
+            user_info_html = f"<p><em>Could not fetch user info: {e}</em></p>"
+
         return f"""
         <html>
         <head><title>Chzzk OAuth Demo</title></head>
         <body>
             <h1>Chzzk OAuth Demo</h1>
             <h2>Logged In</h2>
+            {user_info_html}
+            <hr>
+            <h3>Token Info</h3>
             <p><strong>Access Token:</strong> {token.access_token[:20]}...</p>
             <p><strong>Token Type:</strong> {token.token_type}</p>
             <p><strong>Expires At:</strong> {token.expires_at}</p>
             <p><strong>Is Expired:</strong> {token.is_expired}</p>
             <p><strong>Scope:</strong> {token.scope or "N/A"}</p>
+            <hr>
+            <h3>API Demo</h3>
+            <ul>
+                <li><a href="/me">Get My Info (/me)</a></li>
+                <li><a href="/live">Live Broadcasts (/live)</a></li>
+                <li><a href="/live-setting">My Live Setting (/live-setting)</a></li>
+            </ul>
             <hr>
             <a href="/refresh">Refresh Token</a> |
             <a href="/logout">Logout</a>
@@ -86,7 +116,7 @@ def index() -> str:
 @app.route("/login")
 def login() -> object:
     """Redirect to Chzzk authorization page."""
-    auth_url, state = oauth.get_authorization_url()
+    auth_url, state = client.get_authorization_url()
     print(f"Generated state: {state}")
     return redirect(auth_url)
 
@@ -123,7 +153,7 @@ def callback() -> str:
         """
 
     try:
-        token = oauth.exchange_code(code=code, state=state)
+        token = client.authenticate(code=code, state=state)
         return f"""
         <html>
         <head><title>Success</title></head>
@@ -165,7 +195,7 @@ def callback() -> str:
 def refresh() -> str:
     """Refresh the access token."""
     try:
-        token = oauth.refresh_token()
+        token = client.refresh_token()
         return f"""
         <html>
         <head><title>Token Refreshed</title></head>
@@ -205,7 +235,7 @@ def refresh() -> str:
 def logout() -> str:
     """Revoke the token and logout."""
     try:
-        oauth.revoke_token()
+        client.revoke_token()
         return """
         <html>
         <head><title>Logged Out</title></head>
@@ -229,6 +259,143 @@ def logout() -> str:
         """
 
 
+@app.route("/me")
+def me() -> str:
+    """Get the current user's information."""
+    if not client.is_authenticated:
+        return """
+        <html>
+        <head><title>Not Authenticated</title></head>
+        <body>
+            <h1>Not Authenticated</h1>
+            <p>Please login first</p>
+            <a href="/login">Login</a>
+        </body>
+        </html>
+        """
+
+    try:
+        user = client.user.get_me()
+        return f"""
+        <html>
+        <head><title>User Info</title></head>
+        <body>
+            <h1>User Info</h1>
+            <p><strong>Channel ID:</strong> {user.channel_id}</p>
+            <p><strong>Channel Name:</strong> {user.channel_name}</p>
+            <hr>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+    except ChzzkAPIError as e:
+        return f"""
+        <html>
+        <head><title>API Error</title></head>
+        <body>
+            <h1>API Error</h1>
+            <p>{e!s}</p>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+
+
+@app.route("/live")
+def live() -> str:
+    """Get a list of live broadcasts."""
+    try:
+        response = client.live.get_lives(size=10)
+        lives_html = ""
+        for live in response.data:
+            tags_str = ", ".join(live.tags) if live.tags else "None"
+            lives_html += f"""
+            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+                <h3>{live.live_title}</h3>
+                <p><strong>Channel:</strong> {live.channel_name}</p>
+                <p><strong>Viewers:</strong> {live.concurrent_user_count:,}</p>
+                <p><strong>Category:</strong> {live.live_category_value or "N/A"}</p>
+                <p><strong>Tags:</strong> {tags_str}</p>
+            </div>
+            """
+
+        if not response.data:
+            lives_html = "<p>No live broadcasts found.</p>"
+
+        return f"""
+        <html>
+        <head><title>Live Broadcasts</title></head>
+        <body>
+            <h1>Live Broadcasts</h1>
+            <p>Showing {len(response.data)} live streams</p>
+            {lives_html}
+            <hr>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+    except ChzzkAPIError as e:
+        return f"""
+        <html>
+        <head><title>API Error</title></head>
+        <body>
+            <h1>API Error</h1>
+            <p>{e!s}</p>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+
+
+@app.route("/live-setting")
+def live_setting() -> str:
+    """Get the current user's live broadcast setting."""
+    if not client.is_authenticated:
+        return """
+        <html>
+        <head><title>Not Authenticated</title></head>
+        <body>
+            <h1>Not Authenticated</h1>
+            <p>Please login first</p>
+            <a href="/login">Login</a>
+        </body>
+        </html>
+        """
+
+    try:
+        setting = client.live.get_setting()
+        category_html = "N/A"
+        if setting.category:
+            category_html = f"{setting.category.category_value} ({setting.category.category_type})"
+
+        tags_str = ", ".join(setting.tags) if setting.tags else "None"
+
+        return f"""
+        <html>
+        <head><title>Live Setting</title></head>
+        <body>
+            <h1>My Live Setting</h1>
+            <p><strong>Default Title:</strong> {setting.default_live_title or "N/A"}</p>
+            <p><strong>Category:</strong> {category_html}</p>
+            <p><strong>Tags:</strong> {tags_str}</p>
+            <hr>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+    except ChzzkAPIError as e:
+        return f"""
+        <html>
+        <head><title>API Error</title></head>
+        <body>
+            <h1>API Error</h1>
+            <p>{e!s}</p>
+            <a href="/">Back to Home</a>
+        </body>
+        </html>
+        """
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("Chzzk OAuth Example Server")
@@ -237,6 +404,6 @@ if __name__ == "__main__":
     print(f"Redirect URI: {REDIRECT_URI}")
     print(f"Token File: {TOKEN_FILE}")
     print("=" * 50)
-    print("Open http://localhost:8080 in your browser")
+    print(f"Open http://localhost:{PORT} in your browser")
     print("=" * 50)
-    app.run(host="localhost", port=8080, debug=True)
+    app.run(host="localhost", port=PORT, debug=True)
