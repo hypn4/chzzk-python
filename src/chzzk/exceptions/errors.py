@@ -101,3 +101,30 @@ class InvalidStateError(ChzzkError):
 
     def __init__(self, message: str = "Invalid state parameter") -> None:
         super().__init__(message)
+
+
+class SessionError(ChzzkError):
+    """Base exception for session-related errors."""
+
+    pass
+
+
+class SessionConnectionError(SessionError):
+    """Exception raised when Socket.IO connection fails."""
+
+    def __init__(self, message: str = "Failed to connect to session") -> None:
+        super().__init__(message)
+
+
+class SessionLimitExceededError(SessionError):
+    """Exception raised when maximum session limit is exceeded."""
+
+    def __init__(self, message: str = "Maximum session limit exceeded") -> None:
+        super().__init__(message)
+
+
+class EventSubscriptionError(SessionError):
+    """Exception raised when event subscription fails."""
+
+    def __init__(self, message: str = "Failed to subscribe to event") -> None:
+        super().__init__(message)
