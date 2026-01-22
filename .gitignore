@@ -31,3 +31,8 @@ htmlcov/
 
 # OS
 .DS_Store
+
+# AI tooling
+.mcp.json
+CLAUDE.md
+.claude/
