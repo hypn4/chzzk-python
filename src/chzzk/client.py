@@ -9,9 +9,11 @@ from chzzk.api.channel import AsyncChannelService, ChannelService
 from chzzk.api.chat import AsyncChatService, ChatService
 from chzzk.api.live import AsyncLiveService, LiveService
 from chzzk.api.restriction import AsyncRestrictionService, RestrictionService
+from chzzk.api.session import AsyncSessionService, SessionService
 from chzzk.api.user import AsyncUserService, UserService
 from chzzk.auth.oauth import AsyncChzzkOAuth, ChzzkOAuth, TokenStorage
 from chzzk.http.client import AsyncHTTPClient, HTTPClient
+from chzzk.realtime import AsyncChzzkEventClient, ChzzkEventClient
 
 if TYPE_CHECKING:
     from chzzk.auth.models import Token
@@ -95,6 +97,7 @@ class ChzzkClient:
         self.live = LiveService(self._http, **common_kwargs)
         self.chat = ChatService(self._http, **common_kwargs)
         self.restriction = RestrictionService(self._http, **common_kwargs)
+        self.session = SessionService(self._http, **common_kwargs)
 
     def _create_token_refresher(self):
         """Create a token refresher callback for automatic token refresh."""
@@ -232,6 +235,24 @@ class ChzzkClient:
         self.live.set_access_token(token)
         self.chat.set_access_token(token)
         self.restriction.set_access_token(token)
+        self.session.set_access_token(token)
+
+    def create_event_client(self) -> ChzzkEventClient:
+        """Create a realtime event client for receiving WebSocket events.
+
+        Returns:
+            ChzzkEventClient instance for receiving chat, donation, and subscription events.
+
+        Example:
+            >>> event_client = client.create_event_client()
+            >>> @event_client.on_chat
+            ... def handle_chat(event):
+            ...     print(f"{event.profile.nickname}: {event.content}")
+            >>> event_client.connect()
+            >>> event_client.subscribe_chat()
+            >>> event_client.run_forever()
+        """
+        return ChzzkEventClient(self.session)
 
     def close(self) -> None:
         """Close the HTTP client."""
@@ -324,6 +345,7 @@ class AsyncChzzkClient:
         self.live = AsyncLiveService(self._http, **common_kwargs)
         self.chat = AsyncChatService(self._http, **common_kwargs)
         self.restriction = AsyncRestrictionService(self._http, **common_kwargs)
+        self.session = AsyncSessionService(self._http, **common_kwargs)
 
     def _create_async_token_refresher(self):
         """Create an async token refresher callback for automatic token refresh."""
@@ -461,6 +483,24 @@ class AsyncChzzkClient:
         self.live.set_access_token(token)
         self.chat.set_access_token(token)
         self.restriction.set_access_token(token)
+        self.session.set_access_token(token)
+
+    def create_event_client(self) -> AsyncChzzkEventClient:
+        """Create a realtime event client for receiving WebSocket events.
+
+        Returns:
+            AsyncChzzkEventClient instance for receiving chat, donation, and subscription events.
+
+        Example:
+            >>> event_client = client.create_event_client()
+            >>> @event_client.on_chat
+            ... async def handle_chat(event):
+            ...     print(f"{event.profile.nickname}: {event.content}")
+            >>> await event_client.connect()
+            >>> await event_client.subscribe_chat()
+            >>> await event_client.run_forever()
+        """
+        return AsyncChzzkEventClient(self.session)
 
     async def close(self) -> None:
         """Close the HTTP client."""
