@@ -84,7 +84,10 @@ from chzzk.models import (
 )
 from chzzk.realtime import AsyncChzzkEventClient, ChzzkEventClient
 
-__version__ = "0.1.0"
+try:
+    from chzzk._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0"  # 개발 환경 fallback
 
 __all__ = [
     # Clients

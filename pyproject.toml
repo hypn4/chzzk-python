@@ -1,15 +1,42 @@
 [project]
 name = "chzzk-python"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Unofficial Python SDK for Chzzk (NAVER Live Streaming Platform) API"
 readme = "README.md"
-requires-python = ">=3.14"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+authors = [
+    {name = "hypn4"}
+]
+keywords = [
+    "chzzk", "naver", "live-streaming", "api", "sdk",
+    "korean", "streaming", "chat", "websocket"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "httpx>=0.28.0",
     "pydantic>=2.10.0",
     "python-socketio[asyncio_client]>=4.6.0,<5.0.0",
     "websocket-client>=1.9.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/hypn4/chzzk-python"
+Repository = "https://github.com/hypn4/chzzk-python"
+Documentation = "https://github.com/hypn4/chzzk-python#readme"
+"Bug Tracker" = "https://github.com/hypn4/chzzk-python/issues"
+Changelog = "https://github.com/hypn4/chzzk-python/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
@@ -22,8 +49,14 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/chzzk/_version.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -47,7 +80,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
