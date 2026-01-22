@@ -36,3 +36,17 @@ CHAT_SETTINGS_URL = f"{OPEN_API_PREFIX}/chats/settings"
 
 # Restriction endpoints
 RESTRICT_CHANNELS_URL = f"{OPEN_API_PREFIX}/restrict-channels"
+
+# Session endpoints
+SESSIONS_AUTH_URL = f"{OPEN_API_PREFIX}/sessions/auth"
+SESSIONS_AUTH_CLIENT_URL = f"{OPEN_API_PREFIX}/sessions/auth/client"
+SESSIONS_URL = f"{OPEN_API_PREFIX}/sessions"
+SESSIONS_CLIENT_URL = f"{OPEN_API_PREFIX}/sessions/client"
+SESSIONS_SUBSCRIBE_CHAT_URL = f"{OPEN_API_PREFIX}/sessions/events/subscribe/chat"
+SESSIONS_SUBSCRIBE_DONATION_URL = f"{OPEN_API_PREFIX}/sessions/events/subscribe/donation"
+SESSIONS_SUBSCRIBE_SUBSCRIPTION_URL = f"{OPEN_API_PREFIX}/sessions/events/subscribe/subscription"
+SESSIONS_UNSUBSCRIBE_CHAT_URL = f"{OPEN_API_PREFIX}/sessions/events/unsubscribe/chat"
+SESSIONS_UNSUBSCRIBE_DONATION_URL = f"{OPEN_API_PREFIX}/sessions/events/unsubscribe/donation"
+SESSIONS_UNSUBSCRIBE_SUBSCRIPTION_URL = (
+    f"{OPEN_API_PREFIX}/sessions/events/unsubscribe/subscription"
+)
