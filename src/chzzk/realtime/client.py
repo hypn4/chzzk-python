@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -30,6 +31,13 @@ AsyncChatHandler = Callable[[ChatEvent], Any]
 AsyncDonationHandler = Callable[[DonationEvent], Any]
 AsyncSubscriptionHandler = Callable[[SubscriptionEvent], Any]
 AsyncSystemHandler = Callable[[SystemEvent], Any]
+
+
+def _parse_event_data(data: str | dict[str, Any]) -> dict[str, Any]:
+    """Parse event data from string or dict."""
+    if isinstance(data, str):
+        return json.loads(data)
+    return data
 
 
 class ChzzkEventClient:
@@ -89,8 +97,8 @@ class ChzzkEventClient:
             self._session_key = None
 
         @self._sio.on("SYSTEM")
-        def on_system(data: dict[str, Any]) -> None:
-            event = SystemEvent.model_validate(data)
+        def on_system(data: str | dict[str, Any]) -> None:
+            event = SystemEvent.model_validate(_parse_event_data(data))
 
             # Handle connection established
             if event.type == SystemMessageType.CONNECTED and event.data:
@@ -102,20 +110,20 @@ class ChzzkEventClient:
                 handler(event)
 
         @self._sio.on("CHAT")
-        def on_chat(data: dict[str, Any]) -> None:
-            event = ChatEvent.model_validate(data)
+        def on_chat(data: str | dict[str, Any]) -> None:
+            event = ChatEvent.model_validate(_parse_event_data(data))
             for handler in self._chat_handlers:
                 handler(event)
 
         @self._sio.on("DONATION")
-        def on_donation(data: dict[str, Any]) -> None:
-            event = DonationEvent.model_validate(data)
+        def on_donation(data: str | dict[str, Any]) -> None:
+            event = DonationEvent.model_validate(_parse_event_data(data))
             for handler in self._donation_handlers:
                 handler(event)
 
         @self._sio.on("SUBSCRIPTION")
-        def on_subscription(data: dict[str, Any]) -> None:
-            event = SubscriptionEvent.model_validate(data)
+        def on_subscription(data: str | dict[str, Any]) -> None:
+            event = SubscriptionEvent.model_validate(_parse_event_data(data))
             for handler in self._subscription_handlers:
                 handler(event)
 
@@ -152,7 +160,6 @@ class ChzzkEventClient:
             self._sio.connect(
                 response.url,
                 transports=["websocket"],
-                wait_timeout=timeout,
             )
         except Exception as e:
             raise SessionConnectionError(f"Failed to connect: {e}") from e
@@ -381,8 +388,8 @@ class AsyncChzzkEventClient:
             self._session_key = None
 
         @self._sio.on("SYSTEM")
-        async def on_system(data: dict[str, Any]) -> None:
-            event = SystemEvent.model_validate(data)
+        async def on_system(data: str | dict[str, Any]) -> None:
+            event = SystemEvent.model_validate(_parse_event_data(data))
 
             # Handle connection established
             if event.type == SystemMessageType.CONNECTED and event.data:
@@ -397,24 +404,24 @@ class AsyncChzzkEventClient:
                     await result
 
         @self._sio.on("CHAT")
-        async def on_chat(data: dict[str, Any]) -> None:
-            event = ChatEvent.model_validate(data)
+        async def on_chat(data: str | dict[str, Any]) -> None:
+            event = ChatEvent.model_validate(_parse_event_data(data))
             for handler in self._chat_handlers:
                 result = handler(event)
                 if hasattr(result, "__await__"):
                     await result
 
         @self._sio.on("DONATION")
-        async def on_donation(data: dict[str, Any]) -> None:
-            event = DonationEvent.model_validate(data)
+        async def on_donation(data: str | dict[str, Any]) -> None:
+            event = DonationEvent.model_validate(_parse_event_data(data))
             for handler in self._donation_handlers:
                 result = handler(event)
                 if hasattr(result, "__await__"):
                     await result
 
         @self._sio.on("SUBSCRIPTION")
-        async def on_subscription(data: dict[str, Any]) -> None:
-            event = SubscriptionEvent.model_validate(data)
+        async def on_subscription(data: str | dict[str, Any]) -> None:
+            event = SubscriptionEvent.model_validate(_parse_event_data(data))
             for handler in self._subscription_handlers:
                 result = handler(event)
                 if hasattr(result, "__await__"):
@@ -458,7 +465,6 @@ class AsyncChzzkEventClient:
             await self._sio.connect(
                 response.url,
                 transports=["websocket"],
-                wait_timeout=timeout,
             )
         except Exception as e:
             raise SessionConnectionError(f"Failed to connect: {e}") from e
