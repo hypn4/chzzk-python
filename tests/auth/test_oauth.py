@@ -21,7 +21,6 @@ from chzzk.auth import (
 from chzzk.exceptions import (
     InvalidClientError,
     InvalidStateError,
-    InvalidTokenError,
     RateLimitError,
     TokenExpiredError,
 )
@@ -335,64 +334,6 @@ class TestChzzkOAuth:
     def test_revoke_token_no_token_does_nothing(self, oauth: ChzzkOAuth) -> None:
         oauth.revoke_token()
 
-    def test_get_access_token_returns_valid_token(self, oauth: ChzzkOAuth) -> None:
-        token = Token(
-            access_token="valid_token",
-            refresh_token="refresh",
-            token_type="Bearer",
-            expires_in=86400,
-            issued_at=datetime.now(UTC),
-        )
-        oauth._storage.save_token(token)
-
-        access_token = oauth.get_access_token()
-        assert access_token == "valid_token"
-
-    def test_get_access_token_auto_refresh(
-        self,
-        oauth: ChzzkOAuth,
-        httpx_mock: HTTPXMock,
-    ) -> None:
-        httpx_mock.add_response(
-            url=AUTH_TOKEN_URL,
-            method="POST",
-            json={
-                "accessToken": "refreshed_token",
-                "refreshToken": "new_refresh",
-                "tokenType": "Bearer",
-                "expiresIn": 86400,
-            },
-        )
-
-        expired_token = Token(
-            access_token="expired_token",
-            refresh_token="refresh",
-            token_type="Bearer",
-            expires_in=86400,
-            issued_at=datetime.now(UTC) - timedelta(days=2),
-        )
-        oauth._storage.save_token(expired_token)
-
-        access_token = oauth.get_access_token(auto_refresh=True)
-        assert access_token == "refreshed_token"
-
-    def test_get_access_token_expired_no_auto_refresh(self, oauth: ChzzkOAuth) -> None:
-        expired_token = Token(
-            access_token="expired_token",
-            refresh_token="refresh",
-            token_type="Bearer",
-            expires_in=86400,
-            issued_at=datetime.now(UTC) - timedelta(days=2),
-        )
-        oauth._storage.save_token(expired_token)
-
-        with pytest.raises(InvalidTokenError):
-            oauth.get_access_token(auto_refresh=False)
-
-    def test_get_access_token_no_token(self, oauth: ChzzkOAuth) -> None:
-        with pytest.raises(TokenExpiredError):
-            oauth.get_access_token()
-
     def test_invalid_client_error(
         self,
         oauth: ChzzkOAuth,
@@ -523,34 +464,6 @@ class TestAsyncChzzkOAuth:
 
         await oauth.revoke_token()
         assert oauth.get_token() is None
-
-    async def test_get_access_token_auto_refresh(
-        self,
-        oauth: AsyncChzzkOAuth,
-        httpx_mock: HTTPXMock,
-    ) -> None:
-        httpx_mock.add_response(
-            url=AUTH_TOKEN_URL,
-            method="POST",
-            json={
-                "accessToken": "refreshed_token",
-                "refreshToken": "new_refresh",
-                "tokenType": "Bearer",
-                "expiresIn": 86400,
-            },
-        )
-
-        expired = Token(
-            access_token="expired",
-            refresh_token="refresh",
-            token_type="Bearer",
-            expires_in=86400,
-            issued_at=datetime.now(UTC) - timedelta(days=2),
-        )
-        oauth._storage.save_token(expired)
-
-        access_token = await oauth.get_access_token()
-        assert access_token == "refreshed_token"
 
     async def test_context_manager(self, httpx_mock: HTTPXMock) -> None:
         async with AsyncChzzkOAuth(

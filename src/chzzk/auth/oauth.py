@@ -14,7 +14,7 @@ from chzzk.auth.models import (
     TokenResponse,
     TokenTypeHint,
 )
-from chzzk.exceptions import InvalidStateError, InvalidTokenError, TokenExpiredError
+from chzzk.exceptions import InvalidStateError, TokenExpiredError
 from chzzk.http import AUTH_INTERLOCK_URL, AUTH_REVOKE_URL, AUTH_TOKEN_URL
 from chzzk.http.client import AsyncHTTPClient, HTTPClient
 
@@ -73,7 +73,7 @@ class ChzzkOAuth:
         >>> auth_url, state = oauth.get_authorization_url()
         >>> # User visits auth_url and gets redirected back with code
         >>> token = oauth.exchange_code(code="auth_code", state=state)
-        >>> access_token = oauth.get_access_token()
+        >>> access_token = token.access_token
     """
 
     def __init__(
@@ -236,31 +236,6 @@ class ChzzkOAuth:
 
         self._storage.delete_token()
 
-    def get_access_token(self, *, auto_refresh: bool = True) -> str:
-        """Get the current access token, optionally refreshing if expired.
-
-        Args:
-            auto_refresh: Whether to automatically refresh an expired token.
-
-        Returns:
-            The access token string.
-
-        Raises:
-            TokenExpiredError: If no token is available.
-            InvalidTokenError: If the token is expired and auto_refresh is False.
-        """
-        token = self._storage.get_token()
-
-        if token is None:
-            raise TokenExpiredError("No token available")
-
-        if token.is_expired:
-            if not auto_refresh:
-                raise InvalidTokenError("Access token is expired")
-            token = self.refresh_token()
-
-        return token.access_token
-
     def get_token(self) -> Token | None:
         """Get the stored token.
 
@@ -295,7 +270,7 @@ class AsyncChzzkOAuth:
         ...     auth_url, state = oauth.get_authorization_url()
         ...     # User visits auth_url and gets redirected back with code
         ...     token = await oauth.exchange_code(code="auth_code", state=state)
-        ...     access_token = await oauth.get_access_token()
+        ...     access_token = token.access_token
     """
 
     def __init__(
@@ -457,31 +432,6 @@ class AsyncChzzkOAuth:
         )
 
         self._storage.delete_token()
-
-    async def get_access_token(self, *, auto_refresh: bool = True) -> str:
-        """Get the current access token, optionally refreshing if expired.
-
-        Args:
-            auto_refresh: Whether to automatically refresh an expired token.
-
-        Returns:
-            The access token string.
-
-        Raises:
-            TokenExpiredError: If no token is available.
-            InvalidTokenError: If the token is expired and auto_refresh is False.
-        """
-        token = self._storage.get_token()
-
-        if token is None:
-            raise TokenExpiredError("No token available")
-
-        if token.is_expired:
-            if not auto_refresh:
-                raise InvalidTokenError("Access token is expired")
-            token = await self.refresh_token()
-
-        return token.access_token
 
     def get_token(self) -> Token | None:
         """Get the stored token.
