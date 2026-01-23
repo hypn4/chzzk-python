@@ -121,15 +121,18 @@ class UnofficialChatClient:
         """
         return self._live_service.get_live_detail(channel_id)
 
-    def connect(self, channel_id: str, *, timeout: float = 10.0) -> None:
+    def connect(
+        self, channel_id: str, *, timeout: float = 10.0, allow_offline: bool = False
+    ) -> None:
         """Connect to chat for a channel.
 
         Args:
             channel_id: Channel ID to connect to.
             timeout: Connection timeout in seconds.
+            allow_offline: If True, connect even when channel is offline.
 
         Raises:
-            ChatNotLiveError: If the channel is not live.
+            ChatNotLiveError: If the channel is not live and allow_offline is False.
             ChatConnectionError: If connection fails.
         """
         # Store the streaming channel ID (original channel_id)
@@ -138,11 +141,17 @@ class UnofficialChatClient:
         # Get live detail to get chat channel ID
         self._live_detail = self._live_service.get_live_detail(channel_id)
 
-        if not self._live_detail.is_live:
+        if not self._live_detail.is_live and not allow_offline:
             raise ChatNotLiveError(f"Channel {channel_id} is not currently live")
 
         self._chat_channel_id = self._live_detail.chat_channel_id
         if not self._chat_channel_id:
+            if not self._live_detail.is_live:
+                raise ChatConnectionError(
+                    "Chat channel ID not available for offline channel. "
+                    "Authentication (NID_AUT/NID_SES cookies) is required to connect "
+                    "to chat when the channel is offline."
+                )
             raise ChatConnectionError("No chat channel ID found")
 
         # Get access token
@@ -432,15 +441,18 @@ class AsyncUnofficialChatClient:
         """
         return await self._live_service.get_live_detail(channel_id)
 
-    async def connect(self, channel_id: str, *, timeout: float = 10.0) -> None:
+    async def connect(
+        self, channel_id: str, *, timeout: float = 10.0, allow_offline: bool = False
+    ) -> None:
         """Connect to chat for a channel.
 
         Args:
             channel_id: Channel ID to connect to.
             timeout: Connection timeout in seconds.
+            allow_offline: If True, connect even when channel is offline.
 
         Raises:
-            ChatNotLiveError: If the channel is not live.
+            ChatNotLiveError: If the channel is not live and allow_offline is False.
             ChatConnectionError: If connection fails.
         """
         import websockets
@@ -451,11 +463,17 @@ class AsyncUnofficialChatClient:
         # Get live detail to get chat channel ID
         self._live_detail = await self._live_service.get_live_detail(channel_id)
 
-        if not self._live_detail.is_live:
+        if not self._live_detail.is_live and not allow_offline:
             raise ChatNotLiveError(f"Channel {channel_id} is not currently live")
 
         self._chat_channel_id = self._live_detail.chat_channel_id
         if not self._chat_channel_id:
+            if not self._live_detail.is_live:
+                raise ChatConnectionError(
+                    "Chat channel ID not available for offline channel. "
+                    "Authentication (NID_AUT/NID_SES cookies) is required to connect "
+                    "to chat when the channel is offline."
+                )
             raise ChatConnectionError("No chat channel ID found")
 
         # Get access token
