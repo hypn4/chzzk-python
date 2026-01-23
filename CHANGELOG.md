@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0](https://github.com/hypn4/chzzk-python/compare/v0.7.0...v0.8.0) (2026-01-23)
+
+
+### Features
+
+* add centralized constants and logging utilities ([261f7ad](https://github.com/hypn4/chzzk-python/commit/261f7adb7b55a3edb6b33fca2ede4ed05a402eb1))
+* add comprehensive logging throughout SDK ([12ab35c](https://github.com/hypn4/chzzk-python/commit/12ab35c64c1086fbe27f99f1a405b3103992e046))
+* **cli:** add automatic .env file loading ([98009a3](https://github.com/hypn4/chzzk-python/commit/98009a3c30bef0cfdf4503c807e36b8ff01958d6))
+* **cli:** add inline TUI mode for chat console fallback ([42739f6](https://github.com/hypn4/chzzk-python/commit/42739f69651c30a7a6d831f5263f1f0355df0bfa))
+* **cli:** add TUI applications for login and chat ([e0a0206](https://github.com/hypn4/chzzk-python/commit/e0a02069cb5c2ab4d975b85d8ae27a00747a1e1f))
+* **cli:** add TUI framework and base infrastructure ([bc778fc](https://github.com/hypn4/chzzk-python/commit/bc778fca28478b65182d3d919ab0b6337642e669))
+* **cli:** add TUI widgets for input and chat ([dfd2fe1](https://github.com/hypn4/chzzk-python/commit/dfd2fe167d6b35d8f39144af75f0b8a76a03c737))
+* **cli:** improve TUI fallback handling and diagnostics ([6be5b9d](https://github.com/hypn4/chzzk-python/commit/6be5b9d62231f441efbff5b8badc4f2f0f7ec9ca))
+* **cli:** integrate TUI into auth and chat commands ([690a2a8](https://github.com/hypn4/chzzk-python/commit/690a2a8e060bdb187a4443ac25214bb133587c30))
+* **exceptions:** add WebSocket and message parsing error types ([8a5eaa3](https://github.com/hypn4/chzzk-python/commit/8a5eaa3dc13514ca5c21c7d8d3ff48ac259a0956))
+
+
+### Bug Fixes
+
+* **chat:** ensure WebSocket closes properly on stop ([fdb16f0](https://github.com/hypn4/chzzk-python/commit/fdb16f0be74efe4247e7bf850417759f9ba771cb))
+* **chat:** make monitor lifecycle methods async ([aa1ae12](https://github.com/hypn4/chzzk-python/commit/aa1ae128a4bf70f8c698df2c434741a753ba0413))
+
 ## [0.7.0](https://github.com/hypn4/chzzk-python/compare/v0.6.0...v0.7.0) (2026-01-23)
 
 
