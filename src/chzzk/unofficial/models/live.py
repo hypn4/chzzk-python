@@ -50,3 +50,31 @@ class LiveDetail(BaseModel):
     def is_live(self) -> bool:
         """Check if the channel is currently live."""
         return self.status == LiveStatus.OPEN
+
+
+class LiveStatusPolling(BaseModel):
+    """Live status polling response model.
+
+    This model is used for the live-status polling endpoint which provides
+    lightweight status updates for monitoring channel state changes.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    status: LiveStatus | None = None
+    chat_channel_id: str | None = Field(default=None, alias="chatChannelId")
+    live_id: int | None = Field(default=None, alias="liveId")
+    live_title: str | None = Field(default=None, alias="liveTitle")
+    concurrent_user_count: int = Field(default=0, alias="concurrentUserCount")
+    accumulated_user_count: int = Field(default=0, alias="accumulatedUserCount")
+    adult: bool = False
+    category_type: str | None = Field(default=None, alias="categoryType")
+    live_category: str | None = Field(default=None, alias="liveCategory")
+    live_category_value: str | None = Field(default=None, alias="liveCategoryValue")
+    channel_id: str | None = Field(default=None, alias="channelId")
+    channel_name: str | None = Field(default=None, alias="channelName")
+
+    @property
+    def is_live(self) -> bool:
+        """Check if the channel is currently live."""
+        return self.status == LiveStatus.OPEN

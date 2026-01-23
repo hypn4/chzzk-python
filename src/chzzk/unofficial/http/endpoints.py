@@ -8,6 +8,9 @@ GAME_API_BASE_URL = "https://comm-api.game.naver.com"
 # Note: v3.3 is required to get chatChannelId for offline channels
 LIVE_DETAIL_URL = f"{CHZZK_API_BASE_URL}/service/v3.3/channels/{{channel_id}}/live-detail"
 
+# Live status polling endpoint (for monitoring status changes)
+LIVE_STATUS_POLLING_URL = f"{CHZZK_API_BASE_URL}/polling/v3.1/channels/{{channel_id}}/live-status"
+
 # Chat access token endpoint
 CHAT_ACCESS_TOKEN_URL = f"{GAME_API_BASE_URL}/nng_main/v1/chats/access-token"
 
@@ -61,3 +64,15 @@ def user_status_url() -> str:
         URL string.
     """
     return USER_STATUS_URL
+
+
+def live_status_polling_url(channel_id: str) -> str:
+    """Get URL for live status polling API.
+
+    Args:
+        channel_id: Channel ID to poll status for.
+
+    Returns:
+        Formatted URL string.
+    """
+    return LIVE_STATUS_POLLING_URL.format(channel_id=channel_id)
