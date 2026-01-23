@@ -158,3 +158,22 @@ class ChatNotLiveError(UnofficialAPIError):
 
     def __init__(self, message: str = "Channel is not currently live") -> None:
         super().__init__(message)
+
+
+class ChatReconnectError(UnofficialAPIError):
+    """Exception raised when chat reconnection fails after maximum attempts.
+
+    Attributes:
+        attempt: The number of reconnection attempts made.
+        max_attempts: The maximum number of attempts allowed.
+    """
+
+    def __init__(
+        self,
+        message: str = "Chat reconnection failed",
+        attempt: int = 0,
+        max_attempts: int = 0,
+    ) -> None:
+        self.attempt = attempt
+        self.max_attempts = max_attempts
+        super().__init__(message)
