@@ -36,6 +36,7 @@ dependencies = [
 cli = [
     "typer>=0.15.0",
     "rich>=13.0.0",
+    "textual>=7.3.0",
 ]
 
 [project.scripts]
