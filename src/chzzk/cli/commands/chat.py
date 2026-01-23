@@ -137,10 +137,13 @@ def watch(
         run_tui(viewer_app)
 
         if viewer_app.error_message:
+            console.print(f"[red]Error:[/red] {viewer_app.error_message}")
             raise typer.Exit(1)
         return
 
     # Fallback to console output
+    if not no_tui and not json_output:
+        logger.info("TUI mode unavailable, using console mode")
     _run_watch_console(
         channel_id=channel_id,
         nid_aut=nid_aut,
@@ -348,10 +351,13 @@ def send(
             run_tui(interactive_app)
 
             if interactive_app.error_message:
+                console.print(f"[red]Error:[/red] {interactive_app.error_message}")
                 raise typer.Exit(1)
             return
 
         # Fallback to console interactive mode
+        if not no_tui and not json_output:
+            logger.info("TUI mode unavailable, using console mode")
         _run_interactive_chat_console(
             channel_id=channel_id,
             nid_aut=nid_aut,

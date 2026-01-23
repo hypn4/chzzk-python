@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 import sys
 from typing import TYPE_CHECKING, TypeVar
+
+logger = logging.getLogger("chzzk.cli.tui")
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,10 +32,20 @@ def can_run_tui(min_cols: int = 60, min_lines: int = 20) -> bool:
         True if TUI can be rendered, False otherwise.
     """
     if not sys.stdout.isatty():
+        logger.debug("TUI disabled: not a TTY")
         return False
 
     size = shutil.get_terminal_size()
-    return size.columns >= min_cols and size.lines >= min_lines
+    if size.columns < min_cols or size.lines < min_lines:
+        logger.debug(
+            "TUI disabled: terminal size %dx%d < minimum %dx%d",
+            size.columns,
+            size.lines,
+            min_cols,
+            min_lines,
+        )
+        return False
+    return True
 
 
 def run_tui(
