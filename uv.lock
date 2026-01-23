@@ -164,6 +164,7 @@ source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "python-socketio", extra = ["asyncio-client"] },
     { name = "websocket-client" },
     { name = "websockets" },
@@ -191,6 +192,7 @@ dev = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "python-socketio", extras = ["asyncio-client"], specifier = ">=4.6.0,<5.0.0" },
     { name = "rich", marker = "extra == 'cli'", specifier = ">=13.0.0" },
     { name = "textual", marker = "extra == 'cli'", specifier = ">=7.3.0" },

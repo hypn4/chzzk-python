@@ -5,10 +5,14 @@ from __future__ import annotations
 from typing import Annotated
 
 import typer
+from dotenv import load_dotenv
 
 from chzzk.cli.commands import auth, chat, live
 from chzzk.cli.config import ConfigManager
 from chzzk.cli.logging import setup_logging
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = typer.Typer(
     name="chzzk",
