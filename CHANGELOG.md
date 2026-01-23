@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2](https://github.com/hypn4/chzzk-python/compare/v0.4.1...v0.4.2) (2026-01-23)
+
+
+### Bug Fixes
+
+* **ci:** fetch all tags in publish workflow for hatch-vcs ([2b27204](https://github.com/hypn4/chzzk-python/commit/2b2720487a74d59ce563c1663f42520489f5d3cd))
+
 ## [0.4.1](https://github.com/hypn4/chzzk-python/compare/v0.4.0...v0.4.1) (2026-01-23)
 
 
