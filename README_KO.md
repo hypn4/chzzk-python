@@ -17,6 +17,16 @@ uv add chzzk-python
 pip install chzzk-python
 ```
 
+### CLI 설치
+
+```bash
+# uv 사용 (권장)
+uv add "chzzk-python[cli]"
+
+# pip 사용
+pip install "chzzk-python[cli]"
+```
+
 ## 빠른 시작
 
 ```python
@@ -56,6 +66,8 @@ print(f"채널: {user.channel_name}")
 | **Restriction** | ✅ 구현됨 | 활동 제한 목록 관리 |
 | **Drops** | ❌ 미구현 | - |
 | **Webhook Event** | ❌ 미구현 | - |
+
+> 터미널에서 빠르게 사용할 수 있는 [CLI](#커맨드-라인-인터페이스-cli)도 제공됩니다.
 
 ## 주요 기능
 
@@ -326,6 +338,68 @@ except ChatNotLiveError:
 except ChatConnectionError as e:
     print(f"연결 실패: {e}")
 ```
+
+## 커맨드 라인 인터페이스 (CLI)
+
+비공식 API 기능을 빠르게 사용할 수 있는 CLI를 제공합니다.
+
+### 인증
+
+```bash
+# 네이버 쿠키 저장 (대화형)
+chzzk auth login
+
+# 인증 상태 확인
+chzzk auth status
+
+# 저장된 쿠키 삭제
+chzzk auth logout
+```
+
+쿠키는 `~/.chzzk/cookies.json`에 저장됩니다.
+
+### 라이브 상태
+
+```bash
+# 상세 라이브 정보 조회
+chzzk live info CHANNEL_ID
+
+# 단순 LIVE/OFFLINE 상태 조회
+chzzk live status CHANNEL_ID
+
+# JSON 형식 출력
+chzzk --json live info CHANNEL_ID
+```
+
+### 채팅
+
+```bash
+# 실시간 채팅 보기
+chzzk chat watch CHANNEL_ID
+
+# 오프라인 상태에서도 채팅 보기
+chzzk chat watch CHANNEL_ID --offline
+
+# 메시지 전송 (인증 필요)
+chzzk chat send CHANNEL_ID "안녕하세요!"
+```
+
+### 전역 옵션
+
+```bash
+--nid-aut TEXT      # NID_AUT 쿠키 오버라이드 (환경변수: CHZZK_NID_AUT)
+--nid-ses TEXT      # NID_SES 쿠키 오버라이드 (환경변수: CHZZK_NID_SES)
+--json              # JSON 형식으로 출력
+--log-level LEVEL   # 로그 레벨 설정 (DEBUG, INFO, WARNING, ERROR)
+```
+
+### 환경 변수
+
+| 변수 | 설명 |
+|-----|------|
+| `CHZZK_NID_AUT` | NID_AUT 쿠키 값 |
+| `CHZZK_NID_SES` | NID_SES 쿠키 값 |
+| `CHZZK_LOG_LEVEL` | 기본 로그 레벨 |
 
 ## 예제 코드
 

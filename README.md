@@ -17,6 +17,16 @@ uv add chzzk-python
 pip install chzzk-python
 ```
 
+### CLI Installation
+
+```bash
+# Using uv (recommended)
+uv add "chzzk-python[cli]"
+
+# Using pip
+pip install "chzzk-python[cli]"
+```
+
 ## Quick Start
 
 ```python
@@ -56,6 +66,8 @@ print(f"Channel: {user.channel_name}")
 | **Restriction** | ✅ Implemented | Activity restriction list management |
 | **Drops** | ❌ Not Implemented | - |
 | **Webhook Event** | ❌ Not Implemented | - |
+
+> A [CLI](#command-line-interface) is also available for quick terminal access.
 
 ## Features
 
@@ -326,6 +338,68 @@ except ChatNotLiveError:
 except ChatConnectionError as e:
     print(f"Connection failed: {e}")
 ```
+
+## Command Line Interface
+
+A CLI is available for quick access to the unofficial API features.
+
+### Authentication
+
+```bash
+# Save your Naver cookies (interactive)
+chzzk auth login
+
+# Check authentication status
+chzzk auth status
+
+# Remove stored cookies
+chzzk auth logout
+```
+
+Cookies are stored in `~/.chzzk/cookies.json`.
+
+### Live Status
+
+```bash
+# Get detailed live information
+chzzk live info CHANNEL_ID
+
+# Get simple LIVE/OFFLINE status
+chzzk live status CHANNEL_ID
+
+# JSON output
+chzzk --json live info CHANNEL_ID
+```
+
+### Chat
+
+```bash
+# Watch real-time chat
+chzzk chat watch CHANNEL_ID
+
+# Watch chat even when offline
+chzzk chat watch CHANNEL_ID --offline
+
+# Send a message (requires authentication)
+chzzk chat send CHANNEL_ID "Hello!"
+```
+
+### Global Options
+
+```bash
+--nid-aut TEXT      # Override NID_AUT cookie (env: CHZZK_NID_AUT)
+--nid-ses TEXT      # Override NID_SES cookie (env: CHZZK_NID_SES)
+--json              # Output in JSON format
+--log-level LEVEL   # Set log level (DEBUG, INFO, WARNING, ERROR)
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `CHZZK_NID_AUT` | NID_AUT cookie value |
+| `CHZZK_NID_SES` | NID_SES cookie value |
+| `CHZZK_LOG_LEVEL` | Default log level |
 
 ## Examples
 
