@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from chzzk.constants import StatusText
 from chzzk.unofficial import LiveStatus, UnofficialChzzkClient
 
 if TYPE_CHECKING:
@@ -60,7 +61,7 @@ def info(
         console.print(live_detail.model_dump_json(by_alias=True, indent=2))
     else:
         status_color = "green" if live_detail.is_live else "red"
-        status_text = "LIVE" if live_detail.is_live else "OFFLINE"
+        status_text = StatusText.LIVE if live_detail.is_live else StatusText.OFFLINE
 
         table = Table(show_header=False, box=None, padding=(0, 2))
         table.add_column("Field", style="cyan")
@@ -111,6 +112,8 @@ def status(
         console.print(json.dumps(result))
     else:
         if live_detail.is_live:
-            console.print(f"[green]LIVE[/green] - {live_detail.channel_name or channel_id}")
+            name = live_detail.channel_name or channel_id
+            console.print(f"[green]{StatusText.LIVE}[/green] - {name}")
         else:
-            console.print(f"[red]OFFLINE[/red] - {live_detail.channel_name or channel_id}")
+            name = live_detail.channel_name or channel_id
+            console.print(f"[red]{StatusText.OFFLINE}[/red] - {name}")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from chzzk.api.base import AsyncBaseService, BaseService
+from chzzk.constants import Defaults
 from chzzk.http import CATEGORIES_SEARCH_URL
 from chzzk.models.category import Category
 
@@ -13,7 +14,7 @@ class CategoryService(BaseService):
     Provides access to category-related API endpoints.
     """
 
-    def search(self, query: str, *, size: int = 20) -> list[Category]:
+    def search(self, query: str, *, size: int = Defaults.PAGE_SIZE) -> list[Category]:
         """Search for categories.
 
         Args:
@@ -42,7 +43,7 @@ class AsyncCategoryService(AsyncBaseService):
     Provides access to category-related API endpoints.
     """
 
-    async def search(self, query: str, *, size: int = 20) -> list[Category]:
+    async def search(self, query: str, *, size: int = Defaults.PAGE_SIZE) -> list[Category]:
         """Search for categories.
 
         Args:

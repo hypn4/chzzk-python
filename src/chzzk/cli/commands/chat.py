@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 from rich.console import Console
 
+from chzzk.constants import StatusText
 from chzzk.exceptions import ChatConnectionError, ChatNotLiveError
 from chzzk.unofficial import (
     AsyncUnofficialChzzkClient,
@@ -53,14 +54,16 @@ def format_chat_message(msg: ChatMessage, json_output: bool = False) -> str:
                 "user_id_hash": msg.user_id_hash,
                 "nickname": msg.nickname,
                 "content": msg.content,
-                "badge": msg.profile.badge.name if msg.profile and msg.profile.badge else None,
+                "badge": (
+                    msg.profile.badge.get("name") if msg.profile and msg.profile.badge else None
+                ),
             }
         )
 
     timestamp = datetime.now().strftime("%H:%M:%S")
     badge = ""
     if msg.profile and msg.profile.badge:
-        badge = f"[{msg.profile.badge.name}] " if msg.profile.badge.name else ""
+        badge = f"[{msg.profile.badge.get('name')}] " if msg.profile.badge.get("name") else ""
 
     return f"[dim]{timestamp}[/dim] {badge}[cyan]{msg.nickname}[/cyan]: {msg.content}"
 
@@ -135,7 +138,7 @@ def watch(
             # Connect to chat
             try:
                 if not json_output:
-                    status_text = "LIVE" if live_detail.is_live else "OFFLINE"
+                    status_text = StatusText.LIVE if live_detail.is_live else StatusText.OFFLINE
                     console.print(
                         f"[green]Connecting to chat...[/green] "
                         f"({live_detail.channel_name or channel_id} - {status_text})"
@@ -282,9 +285,11 @@ def send(
             json_output=json_output,
         )
     else:
+        # message is guaranteed to be non-None here (checked above)
+        assert message is not None
         _send_single_message(
             channel_id=channel_id,
-            message=message,  # type: ignore[arg-type]
+            message=message,
             nid_aut=nid_aut,
             nid_ses=nid_ses,
             offline=offline,
@@ -385,7 +390,7 @@ def _run_interactive_chat(
             # Connect to chat
             try:
                 if not json_output:
-                    status_text = "LIVE" if live_detail.is_live else "OFFLINE"
+                    status_text = StatusText.LIVE if live_detail.is_live else StatusText.OFFLINE
                     console.print(
                         f"[green]Connecting to chat...[/green] "
                         f"({live_detail.channel_name or channel_id} - {status_text})"

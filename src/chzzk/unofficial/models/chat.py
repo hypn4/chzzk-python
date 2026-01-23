@@ -101,7 +101,9 @@ class ChatMessage(BaseModel):
     @property
     def nickname(self) -> str:
         """Get the user's nickname."""
-        return self.profile.nickname if self.profile else "Unknown"
+        if self.profile and self.profile.nickname:
+            return self.profile.nickname
+        return "Unknown"
 
 
 class DonationMessage(BaseModel):
@@ -125,4 +127,6 @@ class DonationMessage(BaseModel):
     @property
     def nickname(self) -> str:
         """Get the donor's nickname."""
-        return self.profile.nickname if self.profile else "Unknown"
+        if self.profile and self.profile.nickname:
+            return self.profile.nickname
+        return "Unknown"

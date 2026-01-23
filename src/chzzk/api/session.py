@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from chzzk.api.base import AsyncBaseService, BaseService
+from chzzk.constants import Defaults
 from chzzk.http import (
     SESSIONS_AUTH_CLIENT_URL,
     SESSIONS_AUTH_URL,
@@ -56,7 +57,7 @@ class SessionService(BaseService):
         data = self._http.get(SESSIONS_AUTH_CLIENT_URL, headers=self._get_client_headers())
         return SessionAuthResponse.model_validate(data)
 
-    def get_sessions(self, *, size: int = 20, page: int = 0) -> list[SessionInfo]:
+    def get_sessions(self, *, size: int = Defaults.PAGE_SIZE, page: int = 0) -> list[SessionInfo]:
         """Get session list (user authentication).
 
         Retrieves sessions created with access token authentication.
@@ -77,7 +78,9 @@ class SessionService(BaseService):
         response = SessionListResponse.model_validate(data)
         return response.data
 
-    def get_client_sessions(self, *, size: int = 20, page: int = 0) -> list[SessionInfo]:
+    def get_client_sessions(
+        self, *, size: int = Defaults.PAGE_SIZE, page: int = 0
+    ) -> list[SessionInfo]:
         """Get session list (client authentication).
 
         Retrieves sessions created with client credentials authentication.
@@ -240,7 +243,9 @@ class AsyncSessionService(AsyncBaseService):
         data = await self._http.get(SESSIONS_AUTH_CLIENT_URL, headers=self._get_client_headers())
         return SessionAuthResponse.model_validate(data)
 
-    async def get_sessions(self, *, size: int = 20, page: int = 0) -> list[SessionInfo]:
+    async def get_sessions(
+        self, *, size: int = Defaults.PAGE_SIZE, page: int = 0
+    ) -> list[SessionInfo]:
         """Get session list (user authentication).
 
         Retrieves sessions created with access token authentication.
@@ -263,7 +268,9 @@ class AsyncSessionService(AsyncBaseService):
         response = SessionListResponse.model_validate(data)
         return response.data
 
-    async def get_client_sessions(self, *, size: int = 20, page: int = 0) -> list[SessionInfo]:
+    async def get_client_sessions(
+        self, *, size: int = Defaults.PAGE_SIZE, page: int = 0
+    ) -> list[SessionInfo]:
         """Get session list (client authentication).
 
         Retrieves sessions created with client credentials authentication.

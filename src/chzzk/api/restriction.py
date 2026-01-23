@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from chzzk.api.base import AsyncBaseService, BaseService
+from chzzk.constants import Defaults
 from chzzk.http import RESTRICT_CHANNELS_URL
 from chzzk.models.restriction import RestrictedChannel
 
@@ -16,7 +17,7 @@ class RestrictionService(BaseService):
     def get_list(
         self,
         *,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
         next_token: str | None = None,
     ) -> list[RestrictedChannel]:
         """Get the list of restricted channels.
@@ -86,7 +87,7 @@ class AsyncRestrictionService(AsyncBaseService):
     async def get_list(
         self,
         *,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
         next_token: str | None = None,
     ) -> list[RestrictedChannel]:
         """Get the list of restricted channels.

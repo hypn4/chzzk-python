@@ -7,7 +7,7 @@ import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-import socketio
+import socketio  # type: ignore[import-untyped]
 
 from chzzk.exceptions import SessionConnectionError
 from chzzk.models.session import (
@@ -169,7 +169,9 @@ class ChzzkEventClient:
             self._sio.disconnect()
             raise SessionConnectionError("Connection timeout: did not receive session key")
 
-        return self._session_key  # type: ignore[return-value]
+        # After successful wait, session_key is guaranteed to be set by the handler
+        assert self._session_key is not None
+        return self._session_key
 
     def disconnect(self) -> None:
         """Disconnect from the Socket.IO server."""
@@ -476,7 +478,9 @@ class AsyncChzzkEventClient:
             await self._sio.disconnect()
             raise SessionConnectionError("Connection timeout: did not receive session key") from e
 
-        return self._session_key  # type: ignore[return-value]
+        # After successful wait, session_key is guaranteed to be set by the handler
+        assert self._session_key is not None
+        return self._session_key
 
     async def disconnect(self) -> None:
         """Disconnect from the Socket.IO server."""

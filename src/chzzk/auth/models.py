@@ -8,6 +8,8 @@ from typing import Self
 
 from pydantic import BaseModel, Field, computed_field
 
+from chzzk.constants import Defaults
+
 
 class GrantType(StrEnum):
     """OAuth grant type enumeration."""
@@ -51,7 +53,7 @@ class Token(BaseModel):
 
     model_config = {"populate_by_name": True}
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def expires_at(self) -> datetime:
         """Calculate the expiration time of the access token."""
@@ -61,9 +63,9 @@ class Token(BaseModel):
     def is_expired(self) -> bool:
         """Check if the access token is expired.
 
-        Returns True if the token has expired or will expire within 60 seconds.
+        Returns True if the token has expired or will expire within the buffer period.
         """
-        buffer = timedelta(seconds=60)
+        buffer = timedelta(seconds=Defaults.TOKEN_EXPIRY_BUFFER_SECONDS)
         return datetime.now(UTC) >= (self.expires_at - buffer)
 
     @classmethod

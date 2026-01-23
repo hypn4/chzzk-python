@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from urllib.parse import urlencode
@@ -20,6 +21,8 @@ from chzzk.http.client import AsyncHTTPClient, HTTPClient
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -154,6 +157,7 @@ class ChzzkOAuth:
             state=state,
         )
 
+        logger.debug("Exchanging authorization code for tokens")
         response_data = self._http.post(
             AUTH_TOKEN_URL,
             json=request.model_dump(by_alias=True),
@@ -164,6 +168,7 @@ class ChzzkOAuth:
         self._storage.save_token(token)
         self._pending_state = None
 
+        logger.info("Successfully obtained access token")
         return token
 
     def refresh_token(self, refresh_token: str | None = None) -> Token:
@@ -191,6 +196,7 @@ class ChzzkOAuth:
             refresh_token=refresh_token,
         )
 
+        logger.debug("Refreshing access token")
         response_data = self._http.post(
             AUTH_TOKEN_URL,
             json=request.model_dump(by_alias=True),
@@ -200,6 +206,7 @@ class ChzzkOAuth:
         token = Token.from_response(token_response)
         self._storage.save_token(token)
 
+        logger.info("Successfully refreshed access token")
         return token
 
     def revoke_token(
@@ -229,12 +236,14 @@ class ChzzkOAuth:
             token_type_hint=token_type_hint,
         )
 
+        logger.debug("Revoking token (type_hint=%s)", token_type_hint)
         self._http.post(
             AUTH_REVOKE_URL,
             json=request.model_dump(by_alias=True),
         )
 
         self._storage.delete_token()
+        logger.info("Successfully revoked token")
 
     def get_token(self) -> Token | None:
         """Get the stored token.
@@ -351,6 +360,7 @@ class AsyncChzzkOAuth:
             state=state,
         )
 
+        logger.debug("Exchanging authorization code for tokens")
         response_data = await self._http.post(
             AUTH_TOKEN_URL,
             json=request.model_dump(by_alias=True),
@@ -361,6 +371,7 @@ class AsyncChzzkOAuth:
         self._storage.save_token(token)
         self._pending_state = None
 
+        logger.info("Successfully obtained access token")
         return token
 
     async def refresh_token(self, refresh_token: str | None = None) -> Token:
@@ -388,6 +399,7 @@ class AsyncChzzkOAuth:
             refresh_token=refresh_token,
         )
 
+        logger.debug("Refreshing access token")
         response_data = await self._http.post(
             AUTH_TOKEN_URL,
             json=request.model_dump(by_alias=True),
@@ -397,6 +409,7 @@ class AsyncChzzkOAuth:
         token = Token.from_response(token_response)
         self._storage.save_token(token)
 
+        logger.info("Successfully refreshed access token")
         return token
 
     async def revoke_token(
@@ -426,12 +439,14 @@ class AsyncChzzkOAuth:
             token_type_hint=token_type_hint,
         )
 
+        logger.debug("Revoking token (type_hint=%s)", token_type_hint)
         await self._http.post(
             AUTH_REVOKE_URL,
             json=request.model_dump(by_alias=True),
         )
 
         self._storage.delete_token()
+        logger.info("Successfully revoked token")
 
     def get_token(self) -> Token | None:
         """Get the stored token.

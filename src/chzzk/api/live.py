@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from chzzk.api.base import AsyncBaseService, BaseService
+from chzzk.constants import Defaults
 from chzzk.http import LIVE_SETTING_URL, LIVES_URL, STREAM_KEY_URL
 from chzzk.models.common import CategoryType
 from chzzk.models.live import (
@@ -23,7 +24,7 @@ class LiveService(BaseService):
     def get_lives(
         self,
         *,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
         next_token: str | None = None,
     ) -> LiveListResponse:
         """Get a list of live broadcasts.
@@ -122,7 +123,7 @@ class AsyncLiveService(AsyncBaseService):
     async def get_lives(
         self,
         *,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
         next_token: str | None = None,
     ) -> LiveListResponse:
         """Get a list of live broadcasts.

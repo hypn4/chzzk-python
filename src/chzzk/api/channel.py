@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from chzzk.api.base import AsyncBaseService, BaseService
+from chzzk.constants import Defaults
 from chzzk.http import (
     CHANNEL_FOLLOWERS_URL,
     CHANNEL_ROLES_URL,
@@ -63,7 +64,7 @@ class ChannelService(BaseService):
         self,
         *,
         page: int = 0,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
     ) -> list[Follower]:
         """Get followers for the authenticated user's channel.
 
@@ -91,7 +92,7 @@ class ChannelService(BaseService):
         self,
         *,
         page: int = 0,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
         sort: SubscriberSortType = SubscriberSortType.RECENT,
     ) -> list[Subscriber]:
         """Get subscribers for the authenticated user's channel.
@@ -163,7 +164,7 @@ class AsyncChannelService(AsyncBaseService):
         self,
         *,
         page: int = 0,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
     ) -> list[Follower]:
         """Get followers for the authenticated user's channel.
 
@@ -191,7 +192,7 @@ class AsyncChannelService(AsyncBaseService):
         self,
         *,
         page: int = 0,
-        size: int = 20,
+        size: int = Defaults.PAGE_SIZE,
         sort: SubscriberSortType = SubscriberSortType.RECENT,
     ) -> list[Subscriber]:
         """Get subscribers for the authenticated user's channel.

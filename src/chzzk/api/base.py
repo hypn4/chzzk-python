@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import logging
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from chzzk.http.client import AsyncHTTPClient, HTTPClient
+
+logger = logging.getLogger(__name__)
 
 
 class BaseService:
@@ -60,6 +63,7 @@ class BaseService:
         """
         # Use token refresher if available (may refresh expired token)
         if self._token_refresher:
+            logger.debug("Invoking token refresher callback")
             token = self._token_refresher()
             if token:
                 self._access_token = token
@@ -88,7 +92,7 @@ class AsyncBaseService:
         client_id: str | None = None,
         client_secret: str | None = None,
         access_token: str | None = None,
-        async_token_refresher: Callable[[], str | None] | None = None,
+        async_token_refresher: Callable[[], Awaitable[str | None]] | None = None,
     ) -> None:
         """Initialize the async service.
 
@@ -129,6 +133,7 @@ class AsyncBaseService:
         """
         # Use async token refresher if available (may refresh expired token)
         if self._async_token_refresher:
+            logger.debug("Invoking async token refresher callback")
             token = await self._async_token_refresher()
             if token:
                 self._access_token = token

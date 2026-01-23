@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import json
 import logging
 import threading
 import time
@@ -12,7 +12,8 @@ from typing import Any
 
 import websocket
 
-from chzzk.exceptions import ChatConnectionError, ChatNotLiveError, ChatReconnectError
+from chzzk.constants import WSConfig
+from chzzk.exceptions import ChatConnectionError, ChatNotLiveError, ChatReconnectError, ChzzkError
 from chzzk.unofficial.api.chat import AsyncChatTokenService, ChatTokenService
 from chzzk.unofficial.api.live import (
     AsyncLiveDetailService,
@@ -217,7 +218,8 @@ class UnofficialChatClient:
             user_status = self._user_service.get_user_status()
             if user_status.logged_in:
                 self._user_id_hash = user_status.user_id_hash
-        except Exception:
+        except (ChzzkError, OSError) as e:
+            logger.debug("Failed to get user status (continuing without auth): %s", e)
             self._user_id_hash = None
 
         # Build WebSocket URL
@@ -236,7 +238,7 @@ class UnofficialChatClient:
         self._stop_event.clear()
         self._ws_thread = threading.Thread(
             target=self._ws.run_forever,
-            kwargs={"ping_interval": 20, "ping_timeout": 10},
+            kwargs={"ping_interval": WSConfig.PING_INTERVAL, "ping_timeout": WSConfig.PING_TIMEOUT},
             daemon=True,
         )
         self._ws_thread.start()
@@ -349,9 +351,13 @@ class UnofficialChatClient:
                 )
 
                 # Start WebSocket in background thread
+                ws_kwargs = {
+                    "ping_interval": WSConfig.PING_INTERVAL,
+                    "ping_timeout": WSConfig.PING_TIMEOUT,
+                }
                 self._ws_thread = threading.Thread(
                     target=self._ws.run_forever,
-                    kwargs={"ping_interval": 20, "ping_timeout": 10},
+                    kwargs=ws_kwargs,
                     daemon=True,
                 )
                 self._ws_thread.start()
@@ -396,9 +402,9 @@ class UnofficialChatClient:
             attempt=self._reconnect_attempt,
             max_attempts=max_attempts,
         )
-        for handler in self._reconnect_error_handlers:
+        for error_handler in self._reconnect_error_handlers:
             try:
-                handler(error)
+                error_handler(error)
             except Exception as e:
                 logger.error("Error in on_reconnect_error handler: %s", e)
 
@@ -495,17 +501,16 @@ class UnofficialChatClient:
             elif cmd == ChatCmd.DONATION:
                 donations = self._handler.parse_donation_messages(data)
                 for donation in donations:
-                    for handler in self._donation_handlers:
-                        handler(donation)
+                    for donation_handler in self._donation_handlers:
+                        donation_handler(donation)
 
             else:
                 # Other system messages
-                for handler in self._system_handlers:
-                    handler(data)
+                for system_handler in self._system_handlers:
+                    system_handler(data)
 
-        except Exception:
-            # Ignore parsing errors
-            pass
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
+            logger.debug("Failed to parse WebSocket message: %s", e)
 
     def _on_error(self, ws: websocket.WebSocketApp, error: Exception) -> None:
         """Handle WebSocket error."""
@@ -770,7 +775,8 @@ class AsyncUnofficialChatClient:
             user_status = await self._user_service.get_user_status()
             if user_status.logged_in:
                 self._user_id_hash = user_status.user_id_hash
-        except Exception:
+        except (ChzzkError, OSError) as e:
+            logger.debug("Failed to get user status (continuing without auth): %s", e)
             self._user_id_hash = None
 
         # Build WebSocket URL
@@ -778,7 +784,11 @@ class AsyncUnofficialChatClient:
 
         try:
             self._ws = await asyncio.wait_for(
-                websockets.connect(ws_url, ping_interval=20, ping_timeout=10),
+                websockets.connect(
+                    ws_url,
+                    ping_interval=WSConfig.PING_INTERVAL,
+                    ping_timeout=WSConfig.PING_TIMEOUT,
+                ),
                 timeout=timeout,
             )
         except TimeoutError as e:
@@ -910,7 +920,11 @@ class AsyncUnofficialChatClient:
 
                 # Create new WebSocket
                 self._ws = await asyncio.wait_for(
-                    websockets.connect(ws_url, ping_interval=20, ping_timeout=10),
+                    websockets.connect(
+                        ws_url,
+                        ping_interval=WSConfig.PING_INTERVAL,
+                        ping_timeout=WSConfig.PING_TIMEOUT,
+                    ),
                     timeout=10.0,
                 )
 
@@ -978,9 +992,9 @@ class AsyncUnofficialChatClient:
             attempt=self._reconnect_attempt,
             max_attempts=max_attempts,
         )
-        for handler in self._reconnect_error_handlers:
+        for error_handler in self._reconnect_error_handlers:
             try:
-                result = handler(error)
+                result = error_handler(error)
                 if hasattr(result, "__await__"):
                     await result
             except Exception as e:
@@ -1036,13 +1050,16 @@ class AsyncUnofficialChatClient:
                 if self._stop_requested:
                     break
 
-                with contextlib.suppress(Exception):
+                try:
                     await self._handle_message(message)
+                except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
+                    logger.debug("Failed to handle WebSocket message: %s", e)
 
         except asyncio.CancelledError:
             pass
-        except Exception:
-            pass
+        except OSError as e:
+            # WebSocket connection errors (e.g., connection reset)
+            logger.debug("WebSocket connection error: %s", e)
         finally:
             await self.disconnect()
 
@@ -1066,15 +1083,15 @@ class AsyncUnofficialChatClient:
         elif cmd == ChatCmd.DONATION:
             donations = self._handler.parse_donation_messages(data)
             for donation in donations:
-                for handler in self._donation_handlers:
-                    result = handler(donation)
+                for donation_handler in self._donation_handlers:
+                    result = donation_handler(donation)
                     if hasattr(result, "__await__"):
                         await result
 
         else:
             # Other system messages
-            for handler in self._system_handlers:
-                result = handler(data)
+            for system_handler in self._system_handlers:
+                result = system_handler(data)
                 if hasattr(result, "__await__"):
                     await result
 

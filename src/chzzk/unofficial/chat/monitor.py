@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from chzzk.exceptions import ChzzkError
 from chzzk.unofficial.models.live import LiveStatus, LiveStatusPolling
 from chzzk.unofficial.models.reconnect import ReconnectEvent, StatusChangeEvent
 
@@ -167,7 +168,7 @@ class StatusMonitor:
                 new_status = self._polling_service.get_live_status(self._channel_id)
                 self._check_status_changes(self._state.last_status, new_status)
                 self._state.last_status = new_status
-            except Exception as e:
+            except (ChzzkError, OSError) as e:
                 logger.warning("Failed to poll live status: %s", e)
 
             # Wait for the poll interval or until stopped
@@ -223,9 +224,9 @@ class StatusMonitor:
                 old_chat_channel_id,
                 new_chat_channel_id,
             )
-            for callback in self._on_chat_channel_change_callbacks:
+            for change_callback in self._on_chat_channel_change_callbacks:
                 try:
-                    callback(old_chat_channel_id, new_chat_channel_id)
+                    change_callback(old_chat_channel_id, new_chat_channel_id)
                 except Exception as e:
                     logger.error("Error in on_chat_channel_change callback: %s", e)
 
@@ -331,7 +332,7 @@ class AsyncStatusMonitor:
                 self._state.last_status = new_status
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except (ChzzkError, OSError) as e:
                 logger.warning("Failed to poll live status: %s", e)
 
             try:
@@ -394,9 +395,9 @@ class AsyncStatusMonitor:
                 old_chat_channel_id,
                 new_chat_channel_id,
             )
-            for callback in self._on_chat_channel_change_callbacks:
+            for change_callback in self._on_chat_channel_change_callbacks:
                 try:
-                    result = callback(old_chat_channel_id, new_chat_channel_id)
+                    result = change_callback(old_chat_channel_id, new_chat_channel_id)
                     if hasattr(result, "__await__"):
                         await result
                 except Exception as e:

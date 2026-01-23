@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
+from pydantic import ValidationError
+
+from chzzk.constants import ChatAuthMode, ChatExtra, WSProtocol
 from chzzk.unofficial.models.chat import (
     ChatCmd,
     ChatMessage,
     ChatProfile,
     DonationMessage,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ChatHandler:
@@ -78,8 +84,9 @@ class ChatHandler:
                         item["extras"] = json.loads(extras_str)
 
                     messages.append(ChatMessage.model_validate(item))
-                except Exception:
-                    # Skip malformed messages
+                except (json.JSONDecodeError, ValidationError, KeyError, TypeError) as e:
+                    # Skip malformed messages but log for debugging
+                    logger.debug("Failed to parse chat message: %s", e)
                     continue
 
         return messages
@@ -114,8 +121,9 @@ class ChatHandler:
                         item["extras"] = json.loads(extras_str)
 
                     messages.append(DonationMessage.model_validate(item))
-                except Exception:
-                    # Skip malformed messages
+                except (json.JSONDecodeError, ValidationError, KeyError, TypeError) as e:
+                    # Skip malformed messages but log for debugging
+                    logger.debug("Failed to parse donation message: %s", e)
                     continue
 
         return messages
@@ -126,8 +134,8 @@ class ChatHandler:
         access_token: str,
         *,
         uid: str | None = None,
-        service_id: str = "game",
-        protocol_version: str = "3",
+        service_id: str = WSProtocol.SERVICE_ID,
+        protocol_version: str = WSProtocol.PROTOCOL_VERSION,
     ) -> str:
         """Create connection message for WebSocket.
 
@@ -148,11 +156,11 @@ class ChatHandler:
             "cid": chat_channel_id,
             "bdy": {
                 "uid": uid,
-                "devType": 2001,
+                "devType": WSProtocol.DEV_TYPE,
                 "accTkn": access_token,
-                "auth": "SEND" if uid else "READ",
+                "auth": ChatAuthMode.SEND if uid else ChatAuthMode.READ,
             },
-            "tid": 1,
+            "tid": WSProtocol.TID_CONNECT,
         }
         return json.dumps(message)
 
@@ -165,8 +173,8 @@ class ChatHandler:
         extra_token: str,
         streaming_channel_id: str,
         extras: dict[str, Any] | None = None,
-        service_id: str = "game",
-        protocol_version: str = "3",
+        service_id: str = WSProtocol.SERVICE_ID,
+        protocol_version: str = WSProtocol.PROTOCOL_VERSION,
     ) -> str:
         """Create chat send message for WebSocket.
 
@@ -186,8 +194,8 @@ class ChatHandler:
         import time
 
         default_extras = {
-            "chatType": "STREAMING",
-            "osType": "PC",
+            "chatType": ChatExtra.CHAT_TYPE_STREAMING,
+            "osType": ChatExtra.OS_TYPE_PC,
             "extraToken": extra_token,
             "streamingChannelId": streaming_channel_id,
             "emojis": {},
@@ -197,7 +205,7 @@ class ChatHandler:
 
         body = {
             "msg": content,
-            "msgTypeCode": 1,
+            "msgTypeCode": WSProtocol.MSG_TYPE_CODE,
             "extras": json.dumps(default_extras),
             "msgTime": int(time.time() * 1000),
         }
@@ -209,7 +217,7 @@ class ChatHandler:
             "cid": chat_channel_id,
             "sid": session_id,
             "bdy": body,
-            "tid": 2,
+            "tid": WSProtocol.TID_SEND,
             "retry": False,
         }
         return json.dumps(message)
@@ -221,14 +229,14 @@ class ChatHandler:
         Returns:
             JSON string of pong message.
         """
-        return json.dumps({"cmd": ChatCmd.PONG, "ver": "3"})
+        return json.dumps({"cmd": ChatCmd.PONG, "ver": WSProtocol.PROTOCOL_VERSION})
 
     @staticmethod
     def create_recent_chat_request(
         chat_channel_id: str,
         *,
-        service_id: str = "game",
-        protocol_version: str = "3",
+        service_id: str = WSProtocol.SERVICE_ID,
+        protocol_version: str = WSProtocol.PROTOCOL_VERSION,
     ) -> str:
         """Create request for recent chat messages.
 
@@ -246,7 +254,7 @@ class ChatHandler:
             "svcid": service_id,
             "cid": chat_channel_id,
             "sid": 1,
-            "bdy": {"recentMessageCount": 50},
-            "tid": 3,
+            "bdy": {"recentMessageCount": WSProtocol.RECENT_MESSAGE_COUNT},
+            "tid": WSProtocol.TID_RECENT,
         }
         return json.dumps(message)
