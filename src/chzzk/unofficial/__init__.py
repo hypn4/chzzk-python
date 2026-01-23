@@ -29,9 +29,11 @@ Example:
 from chzzk.unofficial.api import (
     AsyncChatTokenService,
     AsyncLiveDetailService,
+    AsyncLiveStatusPollingService,
     AsyncUserStatusService,
     ChatTokenService,
     LiveDetailService,
+    LiveStatusPollingService,
     UserStatusService,
 )
 from chzzk.unofficial.auth import CookieStorage, FileCookieStorage, NaverCookieAuth
@@ -51,6 +53,10 @@ from chzzk.unofficial.models import (
     DonationMessage,
     LiveDetail,
     LiveStatus,
+    LiveStatusPolling,
+    ReconnectEvent,
+    ReconnectReason,
+    StatusChangeEvent,
     UserStatus,
 )
 
@@ -63,9 +69,11 @@ __all__ = [
     # Services
     "AsyncChatTokenService",
     "AsyncLiveDetailService",
+    "AsyncLiveStatusPollingService",
     "AsyncUserStatusService",
     "ChatTokenService",
     "LiveDetailService",
+    "LiveStatusPollingService",
     "UserStatusService",
     # Auth
     "CookieStorage",
@@ -83,5 +91,9 @@ __all__ = [
     "DonationMessage",
     "LiveDetail",
     "LiveStatus",
+    "LiveStatusPolling",
+    "ReconnectEvent",
+    "ReconnectReason",
+    "StatusChangeEvent",
     "UserStatus",
 ]
