@@ -258,6 +258,75 @@ except ChzzkAPIError as e:
     print(f"API 오류: [{e.status_code}] {e.error_code}: {e.message}")
 ```
 
+## 비공식 API (Unofficial API)
+
+공식 API 외에도 네이버 쿠키 인증을 통한 비공식 API를 제공합니다.
+이를 통해 실시간 채팅 수신/전송이 가능합니다.
+
+> ⚠️ 비공식 API는 언제든 변경될 수 있으며, 공식적으로 지원되지 않습니다.
+
+### 비공식 채팅 클라이언트
+
+**동기 버전:**
+
+```python
+from chzzk.unofficial import UnofficialChatClient, ChatMessage
+
+chat = UnofficialChatClient(
+    nid_aut="your-nid-aut-cookie",
+    nid_ses="your-nid-ses-cookie",
+)
+
+@chat.on_chat
+def on_chat(msg: ChatMessage):
+    print(f"{msg.nickname}: {msg.content}")
+
+@chat.on_donation
+def on_donation(msg):
+    print(f"{msg.nickname} donated {msg.pay_amount}won")
+
+chat.connect("channel-id")
+chat.send_message("안녕하세요!")
+chat.run_forever()
+```
+
+**비동기 버전:**
+
+```python
+from chzzk.unofficial import AsyncUnofficialChatClient, ChatMessage
+
+async with AsyncUnofficialChatClient(
+    nid_aut="your-nid-aut-cookie",
+    nid_ses="your-nid-ses-cookie",
+) as chat:
+    @chat.on_chat
+    async def on_chat(msg: ChatMessage):
+        print(f"{msg.nickname}: {msg.content}")
+
+    await chat.connect("channel-id")
+    await chat.send_message("안녕하세요!")
+    await chat.run_forever()
+```
+
+### 네이버 쿠키 획득 방법
+
+1. 네이버에 로그인
+2. 브라우저 개발자 도구 (F12) → Application → Cookies
+3. `NID_AUT`와 `NID_SES` 쿠키 값 복사
+
+### 비공식 API 예외 처리
+
+```python
+from chzzk import ChatConnectionError, ChatNotLiveError
+
+try:
+    chat.connect("channel-id")
+except ChatNotLiveError:
+    print("채널이 현재 라이브 중이 아닙니다")
+except ChatConnectionError as e:
+    print(f"연결 실패: {e}")
+```
+
 ## 예제 코드
 
 완전한 작동 예제는 [examples](examples/) 디렉토리를 참조하세요:
@@ -266,6 +335,8 @@ except ChzzkAPIError as e:
 - `realtime_chat.py` - 실시간 채팅/후원/구독 이벤트 (동기)
 - `realtime_chat_async.py` - 실시간 이벤트 (비동기)
 - `session_management.py` - 세션 관리 예제
+- `unofficial_chat.py` - 비공식 채팅 클라이언트 (동기)
+- `unofficial_chat_async.py` - 비공식 채팅 클라이언트 (비동기)
 
 ## API 문서
 

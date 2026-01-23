@@ -258,6 +258,75 @@ except ChzzkAPIError as e:
     print(f"API Error: [{e.status_code}] {e.error_code}: {e.message}")
 ```
 
+## Unofficial API
+
+In addition to the official API, we provide an unofficial API using Naver cookie authentication.
+This enables real-time chat receiving/sending functionality.
+
+> ⚠️ The unofficial API may change at any time and is not officially supported.
+
+### Unofficial Chat Client
+
+**Synchronous version:**
+
+```python
+from chzzk.unofficial import UnofficialChatClient, ChatMessage
+
+chat = UnofficialChatClient(
+    nid_aut="your-nid-aut-cookie",
+    nid_ses="your-nid-ses-cookie",
+)
+
+@chat.on_chat
+def on_chat(msg: ChatMessage):
+    print(f"{msg.nickname}: {msg.content}")
+
+@chat.on_donation
+def on_donation(msg):
+    print(f"{msg.nickname} donated {msg.pay_amount}won")
+
+chat.connect("channel-id")
+chat.send_message("Hello!")
+chat.run_forever()
+```
+
+**Asynchronous version:**
+
+```python
+from chzzk.unofficial import AsyncUnofficialChatClient, ChatMessage
+
+async with AsyncUnofficialChatClient(
+    nid_aut="your-nid-aut-cookie",
+    nid_ses="your-nid-ses-cookie",
+) as chat:
+    @chat.on_chat
+    async def on_chat(msg: ChatMessage):
+        print(f"{msg.nickname}: {msg.content}")
+
+    await chat.connect("channel-id")
+    await chat.send_message("Hello!")
+    await chat.run_forever()
+```
+
+### How to Get Naver Cookies
+
+1. Log in to Naver
+2. Browser Developer Tools (F12) → Application → Cookies
+3. Copy `NID_AUT` and `NID_SES` cookie values
+
+### Unofficial API Exception Handling
+
+```python
+from chzzk import ChatConnectionError, ChatNotLiveError
+
+try:
+    chat.connect("channel-id")
+except ChatNotLiveError:
+    print("Channel is not currently live")
+except ChatConnectionError as e:
+    print(f"Connection failed: {e}")
+```
+
 ## Examples
 
 See the [examples](examples/) directory for complete working examples:
@@ -266,6 +335,8 @@ See the [examples](examples/) directory for complete working examples:
 - `realtime_chat.py` - Realtime chat/donation/subscription events (sync)
 - `realtime_chat_async.py` - Realtime events (async)
 - `session_management.py` - Session management example
+- `unofficial_chat.py` - Unofficial chat client (sync)
+- `unofficial_chat_async.py` - Unofficial chat client (async)
 
 ## API Reference
 
