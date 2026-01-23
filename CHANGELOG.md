@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/hypn4/chzzk-python/compare/v0.4.2...v0.5.0) (2026-01-23)
+
+
+### Features
+
+* **ci:** add workflow_call trigger to CI workflow ([c7d016e](https://github.com/hypn4/chzzk-python/commit/c7d016e69a3af6cb79daf9fb1c528fd68c340861))
+* **ci:** improve publish workflow reliability and trigger mechanism ([640b857](https://github.com/hypn4/chzzk-python/commit/640b857ac0033211bbf6bd3f35d82c242d0b8050))
+
 ## [0.4.2](https://github.com/hypn4/chzzk-python/compare/v0.4.1...v0.4.2) (2026-01-23)
 
 
