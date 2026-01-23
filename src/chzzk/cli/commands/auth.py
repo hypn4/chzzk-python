@@ -1,0 +1,135 @@
+"""Authentication commands for CLI."""
+
+from __future__ import annotations
+
+import json
+from typing import TYPE_CHECKING, Annotated
+
+import typer
+from rich.console import Console
+from rich.panel import Panel
+
+if TYPE_CHECKING:
+    from chzzk.cli.config import ConfigManager
+
+app = typer.Typer(no_args_is_help=True)
+console = Console()
+
+
+def get_config(ctx: typer.Context) -> ConfigManager:
+    """Get ConfigManager from context."""
+    return ctx.obj["config"]
+
+
+@app.command()
+def login(
+    ctx: typer.Context,
+    nid_aut: Annotated[
+        str,
+        typer.Option(
+            "--nid-aut",
+            prompt="NID_AUT cookie value",
+            help="NID_AUT cookie value from Naver login",
+        ),
+    ],
+    nid_ses: Annotated[
+        str,
+        typer.Option(
+            "--nid-ses",
+            prompt="NID_SES cookie value",
+            help="NID_SES cookie value from Naver login",
+        ),
+    ],
+) -> None:
+    """Save Naver authentication cookies.
+
+    You can get these cookies from your browser after logging into Naver:
+    1. Open browser DevTools (F12)
+    2. Go to Application > Cookies > naver.com
+    3. Find NID_AUT and NID_SES values
+    """
+    config = get_config(ctx)
+    config.save_cookies(nid_aut, nid_ses)
+
+    if ctx.obj.get("json_output"):
+        console.print(json.dumps({"status": "success", "message": "Cookies saved"}))
+    else:
+        console.print(
+            Panel(
+                f"Cookies saved to [cyan]{config.config_dir}[/cyan]",
+                title="[green]Login successful[/green]",
+                border_style="green",
+            )
+        )
+
+
+@app.command()
+def status(ctx: typer.Context) -> None:
+    """Check authentication status."""
+    config = get_config(ctx)
+    nid_aut, nid_ses = config.get_auth_cookies(
+        cli_nid_aut=ctx.obj.get("nid_aut"),
+        cli_nid_ses=ctx.obj.get("nid_ses"),
+    )
+
+    has_auth = bool(nid_aut and nid_ses)
+
+    if ctx.obj.get("json_output"):
+        result = {
+            "authenticated": has_auth,
+            "has_nid_aut": bool(nid_aut),
+            "has_nid_ses": bool(nid_ses),
+            "has_stored_cookies": config.has_stored_cookies(),
+        }
+        console.print(json.dumps(result))
+    else:
+        if has_auth:
+            # Mask cookie values for display
+            aut_masked = nid_aut[:8] + "..." if nid_aut and len(nid_aut) > 8 else nid_aut
+            ses_masked = nid_ses[:8] + "..." if nid_ses and len(nid_ses) > 8 else nid_ses
+
+            console.print(
+                Panel(
+                    f"[green]Authenticated[/green]\n\n"
+                    f"NID_AUT: [dim]{aut_masked}[/dim]\n"
+                    f"NID_SES: [dim]{ses_masked}[/dim]\n\n"
+                    f"Stored cookies: {'Yes' if config.has_stored_cookies() else 'No'}",
+                    title="Authentication Status",
+                    border_style="green",
+                )
+            )
+        else:
+            console.print(
+                Panel(
+                    "[red]Not authenticated[/red]\n\n"
+                    "Run [cyan]chzzk auth login[/cyan] to save your cookies.",
+                    title="Authentication Status",
+                    border_style="red",
+                )
+            )
+
+
+@app.command()
+def logout(ctx: typer.Context) -> None:
+    """Delete stored authentication cookies."""
+    config = get_config(ctx)
+
+    if not config.has_stored_cookies():
+        if ctx.obj.get("json_output"):
+            console.print(json.dumps({"status": "info", "message": "No cookies stored"}))
+        else:
+            console.print("[yellow]No stored cookies to delete.[/yellow]")
+        return
+
+    config.delete_cookies()
+
+    if ctx.obj.get("json_output"):
+        console.print(json.dumps({"status": "success", "message": "Cookies deleted"}))
+    else:
+        console.print(
+            Panel(
+                "Stored cookies have been deleted.",
+                title="[green]Logout successful[/green]",
+                border_style="green",
+            )
+        )
