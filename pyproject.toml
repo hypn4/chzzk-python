@@ -32,6 +32,15 @@ dependencies = [
     "websockets>=12.0",
 ]
 
+[project.optional-dependencies]
+cli = [
+    "typer>=0.15.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+chzzk = "chzzk.cli.main:app"
+
 [project.urls]
 Homepage = "https://github.com/hypn4/chzzk-python"
 Repository = "https://github.com/hypn4/chzzk-python"
