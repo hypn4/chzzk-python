@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 from rich.console import Console
 
+from chzzk.cli.tui import can_run_tui, run_tui
+from chzzk.cli.tui.apps import ChatViewerApp, InteractiveChatApp
 from chzzk.constants import StatusText
 from chzzk.exceptions import ChatConnectionError, ChatNotLiveError
 from chzzk.unofficial import (
@@ -103,14 +105,60 @@ def watch(
             help="Connect to chat even when channel is offline",
         ),
     ] = False,
+    no_tui: Annotated[
+        bool,
+        typer.Option(
+            "--no-tui",
+            help="Disable TUI and use simple console output",
+        ),
+    ] = False,
 ) -> None:
     """Watch real-time chat messages from a channel.
 
     By default, only connects when the channel is live.
     Use --offline to connect to chat even when offline.
+
+    By default, displays a full-screen TUI with scrollable messages.
+    Use --no-tui for simple console output.
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
+    config = get_config(ctx)
+
+    # Use TUI if available and not disabled/json mode
+    if not json_output and not no_tui and can_run_tui():
+        viewer_app = ChatViewerApp(
+            config=config,
+            channel_id=channel_id,
+            nid_aut=nid_aut,
+            nid_ses=nid_ses,
+            allow_offline=offline,
+        )
+        run_tui(viewer_app)
+
+        if viewer_app.error_message:
+            raise typer.Exit(1)
+        return
+
+    # Fallback to console output
+    _run_watch_console(
+        channel_id=channel_id,
+        nid_aut=nid_aut,
+        nid_ses=nid_ses,
+        offline=offline,
+        json_output=json_output,
+    )
+
+
+def _run_watch_console(
+    *,
+    channel_id: str,
+    nid_aut: str | None,
+    nid_ses: str | None,
+    offline: bool,
+    json_output: bool,
+) -> None:
+    """Run chat watch with console output (fallback mode)."""
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
@@ -243,6 +291,13 @@ def send(
             help="Interactive chat mode (send and receive messages)",
         ),
     ] = False,
+    no_tui: Annotated[
+        bool,
+        typer.Option(
+            "--no-tui",
+            help="Disable TUI and use simple console input/output",
+        ),
+    ] = False,
 ) -> None:
     """Send a chat message to a channel.
 
@@ -251,9 +306,13 @@ def send(
     By default, sends a single message and exits. Use --interactive for
     a persistent connection where you can send and receive messages.
     Use --offline to connect even when the channel is offline.
+
+    In interactive mode, displays a full-screen TUI by default.
+    Use --no-tui for simple console input/output.
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
+    config = get_config(ctx)
 
     if not nid_aut or not nid_ses:
         if json_output:
@@ -277,7 +336,23 @@ def send(
         raise typer.Exit(1)
 
     if interactive:
-        _run_interactive_chat(
+        # Use TUI if available and not disabled/json mode
+        if not json_output and not no_tui and can_run_tui():
+            interactive_app = InteractiveChatApp(
+                config=config,
+                channel_id=channel_id,
+                nid_aut=nid_aut,
+                nid_ses=nid_ses,
+                allow_offline=offline,
+            )
+            run_tui(interactive_app)
+
+            if interactive_app.error_message:
+                raise typer.Exit(1)
+            return
+
+        # Fallback to console interactive mode
+        _run_interactive_chat_console(
             channel_id=channel_id,
             nid_aut=nid_aut,
             nid_ses=nid_ses,
@@ -354,7 +429,7 @@ def _send_single_message(
         raise typer.Exit(1) from None
 
 
-def _run_interactive_chat(
+def _run_interactive_chat_console(
     *,
     channel_id: str,
     nid_aut: str,
@@ -362,7 +437,7 @@ def _run_interactive_chat(
     offline: bool,
     json_output: bool,
 ) -> None:
-    """Run interactive chat mode."""
+    """Run interactive chat with console input/output (fallback mode)."""
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:

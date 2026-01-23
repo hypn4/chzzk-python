@@ -9,6 +9,9 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
+from chzzk.cli.tui import can_run_tui, run_tui
+from chzzk.cli.tui.apps import LoginApp
+
 if TYPE_CHECKING:
     from chzzk.cli.config import ConfigManager
 
@@ -21,25 +24,44 @@ def get_config(ctx: typer.Context) -> ConfigManager:
     return ctx.obj["config"]
 
 
+def _prompt_login_fallback(config: ConfigManager) -> tuple[str, str]:
+    """Fallback prompt-based login for non-TTY environments.
+
+    Args:
+        config: Configuration manager.
+
+    Returns:
+        Tuple of (nid_aut, nid_ses) values.
+    """
+    nid_aut = typer.prompt("NID_AUT cookie value")
+    nid_ses = typer.prompt("NID_SES cookie value")
+    return nid_aut, nid_ses
+
+
 @app.command()
 def login(
     ctx: typer.Context,
     nid_aut: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--nid-aut",
-            prompt="NID_AUT cookie value",
             help="NID_AUT cookie value from Naver login",
         ),
-    ],
+    ] = None,
     nid_ses: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--nid-ses",
-            prompt="NID_SES cookie value",
             help="NID_SES cookie value from Naver login",
         ),
-    ],
+    ] = None,
+    no_tui: Annotated[
+        bool,
+        typer.Option(
+            "--no-tui",
+            help="Disable TUI and use simple prompts",
+        ),
+    ] = False,
 ) -> None:
     """Save Naver authentication cookies.
 
@@ -47,11 +69,63 @@ def login(
     1. Open browser DevTools (F12)
     2. Go to Application > Cookies > naver.com
     3. Find NID_AUT and NID_SES values
+
+    By default, opens an interactive TUI for entering cookies.
+    Use --no-tui to use simple prompts instead.
     """
     config = get_config(ctx)
-    config.save_cookies(nid_aut, nid_ses)
+    json_output = ctx.obj.get("json_output", False)
 
-    if ctx.obj.get("json_output"):
+    # If both values provided via CLI, skip TUI/prompts
+    if nid_aut and nid_ses:
+        config.save_cookies(nid_aut, nid_ses)
+        if json_output:
+            console.print(json.dumps({"status": "success", "message": "Cookies saved"}))
+        else:
+            console.print(
+                Panel(
+                    f"Cookies saved to [cyan]{config.config_dir}[/cyan]",
+                    title="[green]Login successful[/green]",
+                    border_style="green",
+                )
+            )
+        return
+
+    # Try TUI if available and not disabled
+    if not json_output and not no_tui and can_run_tui():
+        login_app = LoginApp(config=config, nid_aut=nid_aut, nid_ses=nid_ses)
+        run_tui(login_app)
+
+        if login_app.result.cancelled:
+            console.print("[yellow]Login cancelled[/yellow]")
+            raise typer.Exit(0)
+
+        if login_app.result.success:
+            if json_output:
+                console.print(json.dumps({"status": "success", "message": "Cookies saved"}))
+            else:
+                console.print(
+                    Panel(
+                        f"Cookies saved to [cyan]{config.config_dir}[/cyan]",
+                        title="[green]Login successful[/green]",
+                        border_style="green",
+                    )
+                )
+        else:
+            console.print("[red]Login failed[/red]")
+            raise typer.Exit(1)
+        return
+
+    # Fallback to simple prompts
+    try:
+        final_nid_aut, final_nid_ses = _prompt_login_fallback(config)
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]Login cancelled[/yellow]")
+        raise typer.Exit(0) from None
+
+    config.save_cookies(final_nid_aut, final_nid_ses)
+
+    if json_output:
         console.print(json.dumps({"status": "success", "message": "Cookies saved"}))
     else:
         console.print(
