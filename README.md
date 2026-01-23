@@ -380,8 +380,19 @@ chzzk chat watch CHANNEL_ID
 # Watch chat even when offline
 chzzk chat watch CHANNEL_ID --offline
 
-# Send a message (requires authentication)
+# Send a single message (requires authentication)
 chzzk chat send CHANNEL_ID "Hello!"
+
+# Send to offline channel
+chzzk chat send CHANNEL_ID "Hello!" --offline
+
+# Interactive mode: send and receive messages
+chzzk chat send CHANNEL_ID --interactive
+# or
+chzzk chat send CHANNEL_ID -i
+
+# Interactive mode with offline channel
+chzzk chat send CHANNEL_ID -i --offline
 ```
 
 ### Global Options

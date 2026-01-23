@@ -380,8 +380,19 @@ chzzk chat watch CHANNEL_ID
 # 오프라인 상태에서도 채팅 보기
 chzzk chat watch CHANNEL_ID --offline
 
-# 메시지 전송 (인증 필요)
+# 단일 메시지 전송 (인증 필요)
 chzzk chat send CHANNEL_ID "안녕하세요!"
+
+# 오프라인 채널에 전송
+chzzk chat send CHANNEL_ID "안녕하세요!" --offline
+
+# 대화형 모드: 메시지 송수신
+chzzk chat send CHANNEL_ID --interactive
+# 또는
+chzzk chat send CHANNEL_ID -i
+
+# 오프라인 채널에서 대화형 모드
+chzzk chat send CHANNEL_ID -i --offline
 ```
 
 ### 전역 옵션
