@@ -5,7 +5,8 @@ CHZZK_API_BASE_URL = "https://api.chzzk.naver.com"
 GAME_API_BASE_URL = "https://comm-api.game.naver.com"
 
 # Live detail endpoint (for getting chatChannelId)
-LIVE_DETAIL_URL = f"{CHZZK_API_BASE_URL}/service/v3/channels/{{channel_id}}/live-detail"
+# Note: v3.3 is required to get chatChannelId for offline channels
+LIVE_DETAIL_URL = f"{CHZZK_API_BASE_URL}/service/v3.3/channels/{{channel_id}}/live-detail"
 
 # Chat access token endpoint
 CHAT_ACCESS_TOKEN_URL = f"{GAME_API_BASE_URL}/nng_main/v1/chats/access-token"
