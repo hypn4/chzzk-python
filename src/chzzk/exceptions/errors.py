@@ -177,3 +177,35 @@ class ChatReconnectError(UnofficialAPIError):
         self.attempt = attempt
         self.max_attempts = max_attempts
         super().__init__(message)
+
+
+class MessageParseError(UnofficialAPIError):
+    """Exception raised when parsing a chat message fails.
+
+    Attributes:
+        raw_data: The raw data that failed to parse.
+    """
+
+    def __init__(
+        self,
+        message: str = "Failed to parse message",
+        raw_data: str | bytes | None = None,
+    ) -> None:
+        self.raw_data = raw_data
+        super().__init__(message)
+
+
+class WebSocketProtocolError(UnofficialAPIError):
+    """Exception raised for WebSocket protocol errors.
+
+    Attributes:
+        command: The command that caused the error, if any.
+    """
+
+    def __init__(
+        self,
+        message: str = "WebSocket protocol error",
+        command: int | None = None,
+    ) -> None:
+        self.command = command
+        super().__init__(message)

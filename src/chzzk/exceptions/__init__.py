@@ -13,6 +13,7 @@ from chzzk.exceptions.errors import (
     InvalidClientError,
     InvalidStateError,
     InvalidTokenError,
+    MessageParseError,
     NotFoundError,
     RateLimitError,
     ServerError,
@@ -21,6 +22,7 @@ from chzzk.exceptions.errors import (
     SessionLimitExceededError,
     TokenExpiredError,
     UnofficialAPIError,
+    WebSocketProtocolError,
 )
 
 __all__ = [
@@ -36,6 +38,7 @@ __all__ = [
     "InvalidClientError",
     "InvalidStateError",
     "InvalidTokenError",
+    "MessageParseError",
     "NotFoundError",
     "RateLimitError",
     "ServerError",
@@ -44,4 +47,5 @@ __all__ = [
     "SessionLimitExceededError",
     "TokenExpiredError",
     "UnofficialAPIError",
+    "WebSocketProtocolError",
 ]
