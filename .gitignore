@@ -23,6 +23,7 @@ examples/.env
 # Testing & Linting
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
 
@@ -39,3 +40,4 @@ htmlcov/
 .mcp.json
 CLAUDE.md
 .claude/
+
