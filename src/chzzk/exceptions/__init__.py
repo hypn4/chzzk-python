@@ -2,8 +2,11 @@
 
 from chzzk.exceptions.errors import (
     AuthenticationError,
+    ChatConnectionError,
+    ChatNotLiveError,
     ChzzkAPIError,
     ChzzkError,
+    CookieAuthenticationError,
     EventSubscriptionError,
     ForbiddenError,
     InvalidClientError,
@@ -16,12 +19,16 @@ from chzzk.exceptions.errors import (
     SessionError,
     SessionLimitExceededError,
     TokenExpiredError,
+    UnofficialAPIError,
 )
 
 __all__ = [
     "AuthenticationError",
+    "ChatConnectionError",
+    "ChatNotLiveError",
     "ChzzkAPIError",
     "ChzzkError",
+    "CookieAuthenticationError",
     "EventSubscriptionError",
     "ForbiddenError",
     "InvalidClientError",
@@ -34,4 +41,5 @@ __all__ = [
     "SessionError",
     "SessionLimitExceededError",
     "TokenExpiredError",
+    "UnofficialAPIError",
 ]

@@ -28,8 +28,11 @@ from chzzk.auth import (
 from chzzk.client import AsyncChzzkClient, ChzzkClient
 from chzzk.exceptions import (
     AuthenticationError,
+    ChatConnectionError,
+    ChatNotLiveError,
     ChzzkAPIError,
     ChzzkError,
+    CookieAuthenticationError,
     EventSubscriptionError,
     ForbiddenError,
     InvalidClientError,
@@ -42,6 +45,7 @@ from chzzk.exceptions import (
     SessionError,
     SessionLimitExceededError,
     TokenExpiredError,
+    UnofficialAPIError,
 )
 from chzzk.models import (
     Badge,
@@ -83,6 +87,24 @@ from chzzk.models import (
     UserRoleCode,
 )
 from chzzk.realtime import AsyncChzzkEventClient, ChzzkEventClient
+from chzzk.unofficial import (
+    AsyncUnofficialChatClient,
+    AsyncUnofficialChzzkClient,
+    ChatAccessToken,
+    ChatCmd,
+    ChatHandler,
+    ChatMessage,
+    ChatMessageExtra,
+    ChatType,
+    CookieStorage,
+    DonationMessage,
+    FileCookieStorage,
+    LiveDetail,
+    LiveStatus,
+    NaverCookieAuth,
+    UnofficialChatClient,
+    UnofficialChzzkClient,
+)
 
 try:
     from chzzk._version import __version__
@@ -93,8 +115,12 @@ __all__ = [
     # Clients
     "AsyncChzzkClient",
     "AsyncChzzkEventClient",
+    "AsyncUnofficialChatClient",
+    "AsyncUnofficialChzzkClient",
     "ChzzkClient",
     "ChzzkEventClient",
+    "UnofficialChatClient",
+    "UnofficialChzzkClient",
     # Services
     "AsyncCategoryService",
     "AsyncChannelService",
@@ -114,8 +140,11 @@ __all__ = [
     "AsyncChzzkOAuth",
     "CallbackTokenStorage",
     "ChzzkOAuth",
+    "CookieStorage",
+    "FileCookieStorage",
     "FileTokenStorage",
     "InMemoryTokenStorage",
+    "NaverCookieAuth",
     "Token",
     "TokenStorage",
     # Models
@@ -124,20 +153,29 @@ __all__ = [
     "CategoryType",
     "ChannelInfo",
     "ChannelManager",
+    "ChatAccessToken",
     "ChatAvailableCondition",
     "ChatAvailableGroup",
+    "ChatCmd",
     "ChatEvent",
+    "ChatHandler",
+    "ChatMessage",
+    "ChatMessageExtra",
     "ChatMessageResponse",
     "ChatProfile",
     "ChatSettings",
+    "ChatType",
     "DonationEvent",
+    "DonationMessage",
     "DonationType",
     "EventType",
     "Follower",
+    "LiveDetail",
     "LiveInfo",
     "LiveListResponse",
     "LiveSetting",
     "LiveSettingCategory",
+    "LiveStatus",
     "Page",
     "RestrictedChannel",
     "SessionAuthResponse",
@@ -158,8 +196,11 @@ __all__ = [
     "UserRoleCode",
     # Exceptions
     "AuthenticationError",
+    "ChatConnectionError",
+    "ChatNotLiveError",
     "ChzzkAPIError",
     "ChzzkError",
+    "CookieAuthenticationError",
     "EventSubscriptionError",
     "ForbiddenError",
     "InvalidClientError",
@@ -172,4 +213,5 @@ __all__ = [
     "SessionError",
     "SessionLimitExceededError",
     "TokenExpiredError",
+    "UnofficialAPIError",
 ]

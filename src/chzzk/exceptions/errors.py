@@ -128,3 +128,33 @@ class EventSubscriptionError(SessionError):
 
     def __init__(self, message: str = "Failed to subscribe to event") -> None:
         super().__init__(message)
+
+
+# Unofficial API Errors
+
+
+class UnofficialAPIError(ChzzkError):
+    """Base exception for unofficial Chzzk API errors."""
+
+    pass
+
+
+class CookieAuthenticationError(UnofficialAPIError):
+    """Exception raised when cookie authentication fails or is missing."""
+
+    def __init__(self, message: str = "Cookie authentication required") -> None:
+        super().__init__(message)
+
+
+class ChatConnectionError(UnofficialAPIError):
+    """Exception raised when chat WebSocket connection fails."""
+
+    def __init__(self, message: str = "Failed to connect to chat") -> None:
+        super().__init__(message)
+
+
+class ChatNotLiveError(UnofficialAPIError):
+    """Exception raised when trying to connect to chat for a non-live channel."""
+
+    def __init__(self, message: str = "Channel is not currently live") -> None:
+        super().__init__(message)
