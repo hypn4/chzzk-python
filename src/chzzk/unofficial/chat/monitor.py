@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import threading
 from collections.abc import Callable
@@ -310,7 +311,7 @@ class AsyncStatusMonitor:
         )
         logger.debug("Async status monitor started for channel %s", self._channel_id)
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """Stop the status monitor."""
         if not self._running:
             return
@@ -320,6 +321,8 @@ class AsyncStatusMonitor:
 
         if self._monitor_task and not self._monitor_task.done():
             self._monitor_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._monitor_task
 
         logger.debug("Async status monitor stopped for channel %s", self._channel_id)
 

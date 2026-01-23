@@ -827,12 +827,12 @@ class AsyncUnofficialChatClient:
 
         # Start status monitor if auto-reconnect is enabled
         if self._auto_reconnect:
-            self._start_monitor()
+            await self._start_monitor()
 
-    def _start_monitor(self) -> None:
+    async def _start_monitor(self) -> None:
         """Start the status monitor for auto-reconnection."""
         if self._monitor:
-            self._monitor.stop()
+            await self._monitor.stop()
 
         if not self._streaming_channel_id:
             return
@@ -850,10 +850,10 @@ class AsyncUnofficialChatClient:
 
         self._monitor.start()
 
-    def _stop_monitor(self) -> None:
+    async def _stop_monitor(self) -> None:
         """Stop the status monitor."""
         if self._monitor:
-            self._monitor.stop()
+            await self._monitor.stop()
             self._monitor = None
 
     async def _handle_live_status(self, event: StatusChangeEvent) -> None:
@@ -1003,7 +1003,7 @@ class AsyncUnofficialChatClient:
     async def disconnect(self) -> None:
         """Disconnect from chat."""
         self._stop_requested = True
-        self._stop_monitor()
+        await self._stop_monitor()
         if self._ws:
             await self._ws.close()
             self._ws = None
