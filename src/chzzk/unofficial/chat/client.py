@@ -1098,6 +1098,13 @@ class AsyncUnofficialChatClient:
     def stop(self) -> None:
         """Signal to stop the event loop."""
         self._stop_requested = True
+        if self._ws:
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._ws.close())
+            except RuntimeError:
+                # No running loop - will be closed in disconnect()
+                pass
 
     # Event handler decorators
 
