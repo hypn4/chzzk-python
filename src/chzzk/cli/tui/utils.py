@@ -75,5 +75,8 @@ def run_tui(
         raise RuntimeError("TTY required for TUI mode")
 
     if inline:
-        return app.run(inline=True, inline_no_clear=True)
+        kwargs: dict[str, object] = {"inline": True, "inline_no_clear": True}
+        if inline_height is not None:
+            kwargs["size"] = (None, inline_height)
+        return app.run(**kwargs)  # type: ignore[arg-type]
     return app.run()

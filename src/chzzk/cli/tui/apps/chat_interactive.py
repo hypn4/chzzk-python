@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
+from textual.containers import VerticalScroll
 from textual.widgets import Footer, Static
 
 from chzzk.cli.tui.base import ChzzkApp
@@ -74,7 +74,6 @@ class InteractiveChatApp(ChzzkApp):
     }
 
     #chat-container {
-        height: 1fr;
         padding: 0 1;
     }
 
@@ -82,14 +81,19 @@ class InteractiveChatApp(ChzzkApp):
         height: 1fr;
     }
 
-    #chat-input-container {
+    #chat-input {
         dock: bottom;
         height: 3;
-        padding: 0 1;
+        margin: 0 1 1 1;
     }
 
-    #chat-input {
-        width: 100%;
+    /* Inline mode styles - compact layout */
+    InteractiveChatApp.-inline-mode #header {
+        display: none;
+    }
+
+    InteractiveChatApp.-inline-mode Footer {
+        display: none;
     }
     """
 
@@ -101,6 +105,7 @@ class InteractiveChatApp(ChzzkApp):
         nid_aut: str | None = None,
         nid_ses: str | None = None,
         allow_offline: bool = False,
+        inline_mode: bool = False,
     ) -> None:
         """Initialize the interactive chat app.
 
@@ -110,10 +115,12 @@ class InteractiveChatApp(ChzzkApp):
             nid_aut: NID_AUT cookie value (required for sending).
             nid_ses: NID_SES cookie value (required for sending).
             allow_offline: Allow connecting when channel is offline.
+            inline_mode: Run in inline mode with compact layout.
         """
         super().__init__(config=config, nid_aut=nid_aut, nid_ses=nid_ses)
         self.channel_id = channel_id
         self.allow_offline = allow_offline
+        self._inline_mode = inline_mode
         self._channel_name: str | None = None
         self._client: AsyncUnofficialChzzkClient | None = None
         self._chat: AsyncUnofficialChatClient | None = None
@@ -125,14 +132,17 @@ class InteractiveChatApp(ChzzkApp):
         """Compose the interactive chat UI."""
         yield Static("Chzzk Interactive Chat", id="header")
         yield Static("Connecting...", id="status", classes="status-connecting")
-        with Container(id="chat-container"):
+        with VerticalScroll(id="chat-container"):
             yield ChatMessageList(id="chat-messages")
-        with Container(id="chat-input-container"):
-            yield ChatInput(placeholder="Type a message and press Enter...", id="chat-input")
+        yield ChatInput(placeholder="Type a message and press Enter...", id="chat-input")
         yield Footer()
 
     async def on_mount(self) -> None:
         """Start chat connection when mounted."""
+        # Apply inline mode class if needed
+        if self._inline_mode:
+            self.add_class("-inline-mode")
+
         # Verify authentication
         nid_aut, nid_ses = self.get_auth_cookies()
         if not nid_aut or not nid_ses:

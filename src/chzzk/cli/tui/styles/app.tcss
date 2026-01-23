@@ -89,9 +89,7 @@ Footer {
     scrollbar-gutter: stable;
 }
 
-#chat-input {
-    dock: bottom;
-}
+/* Note: #chat-input styles are defined in InteractiveChatApp.DEFAULT_CSS */
 
 /* Login-specific styles */
 #login-container {
