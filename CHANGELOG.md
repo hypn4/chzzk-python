@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/hypn4/chzzk-python/compare/v0.2.0...v0.3.0) (2026-01-23)
+
+
+### Features
+
+* add unofficial API with Naver cookie authentication ([2481223](https://github.com/hypn4/chzzk-python/commit/2481223672b56c2de102d42fc4f17e7420e9df7a))
+
+
+### Bug Fixes
+
+* **ci:** trigger publish workflow from release-please ([d63302a](https://github.com/hypn4/chzzk-python/commit/d63302a61e683c73246e5fbd62b7e55cd7bfdd02))
+
+
+### Documentation
+
+* add unofficial API documentation to README ([0c7d575](https://github.com/hypn4/chzzk-python/commit/0c7d5756c6905ec9c4fa2715ffc3655516f9c1e3))
+* add unofficial chat WebSocket protocol documentation ([bb2d4d3](https://github.com/hypn4/chzzk-python/commit/bb2d4d3d6fd058d365d8051169ba3318bdbc5c64))
+* **examples:** add unofficial chat client examples ([8b68a41](https://github.com/hypn4/chzzk-python/commit/8b68a41964588ef40d4a5ce9cdd9bc4080cd5c09))
+
 ## [0.2.0](https://github.com/hypn4/chzzk-python/compare/v0.1.0...v0.2.0) (2026-01-23)
 
 
