@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -60,6 +61,22 @@ def main(
             help="Log level (DEBUG, INFO, WARNING, ERROR)",
         ),
     ] = None,
+    log_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--log-file",
+            envvar="CHZZK_LOG_FILE",
+            help="Save application logs to file",
+        ),
+    ] = None,
+    no_console_log: Annotated[
+        bool,
+        typer.Option(
+            "--no-console-log",
+            envvar="CHZZK_NO_CONSOLE_LOG",
+            help="Disable console (stderr) logging output",
+        ),
+    ] = False,
 ) -> None:
     """Chzzk CLI - Unofficial CLI for Chzzk streaming platform."""
     ctx.ensure_object(dict)
@@ -68,13 +85,16 @@ def main(
 
     # Set up logging
     effective_log_level = config.get_log_level(log_level)
-    setup_logging(effective_log_level)
+    setup_logging(effective_log_level, log_file=log_file, disable_console=no_console_log)
 
     # Store global options in context
     ctx.obj["config"] = config
     ctx.obj["nid_aut"] = nid_aut
     ctx.obj["nid_ses"] = nid_ses
     ctx.obj["json_output"] = json_output
+    ctx.obj["log_level"] = effective_log_level
+    ctx.obj["log_file"] = log_file
+    ctx.obj["no_console_log"] = no_console_log
 
 
 if __name__ == "__main__":
