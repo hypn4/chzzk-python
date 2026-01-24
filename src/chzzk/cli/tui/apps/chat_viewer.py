@@ -20,6 +20,7 @@ from chzzk.unofficial import AsyncUnofficialChzzkClient, ChatMessage, DonationMe
 
 if TYPE_CHECKING:
     from chzzk.cli.config import ConfigManager
+    from chzzk.cli.writers import ChatWriter
 
 logger = logging.getLogger("chzzk.cli.tui.chat_viewer")
 
@@ -88,6 +89,7 @@ class ChatViewerApp(ChzzkApp):
         nid_aut: str | None = None,
         nid_ses: str | None = None,
         allow_offline: bool = False,
+        writer: ChatWriter | None = None,
     ) -> None:
         """Initialize the chat viewer app.
 
@@ -97,6 +99,7 @@ class ChatViewerApp(ChzzkApp):
             nid_aut: NID_AUT cookie value (optional).
             nid_ses: NID_SES cookie value (optional).
             allow_offline: Allow connecting when channel is offline.
+            writer: Optional chat writer for logging messages to file.
         """
         super().__init__(config=config, nid_aut=nid_aut, nid_ses=nid_ses)
         self.channel_id = channel_id
@@ -105,6 +108,7 @@ class ChatViewerApp(ChzzkApp):
         self._client: AsyncUnofficialChzzkClient | None = None
         self._chat_task: asyncio.Task | None = None
         self._error_message: str | None = None
+        self._writer = writer
 
     def compose(self) -> ComposeResult:
         """Compose the chat viewer UI."""
@@ -140,10 +144,14 @@ class ChatViewerApp(ChzzkApp):
                 @chat.on_chat
                 async def handle_chat(msg: ChatMessage) -> None:
                     chat_list.add_chat_message(msg)
+                    if self._writer:
+                        self._writer.write_chat(msg)
 
                 @chat.on_donation
                 async def handle_donation(msg: DonationMessage) -> None:
                     chat_list.add_donation_message(msg)
+                    if self._writer:
+                        self._writer.write_donation(msg)
 
                 # Get live detail
                 try:

@@ -21,6 +21,7 @@ from chzzk.unofficial import AsyncUnofficialChzzkClient, ChatMessage, DonationMe
 
 if TYPE_CHECKING:
     from chzzk.cli.config import ConfigManager
+    from chzzk.cli.writers import ChatWriter
     from chzzk.unofficial.chat.client import AsyncUnofficialChatClient
 
 logger = logging.getLogger("chzzk.cli.tui.chat_interactive")
@@ -106,6 +107,7 @@ class InteractiveChatApp(ChzzkApp):
         nid_ses: str | None = None,
         allow_offline: bool = False,
         inline_mode: bool = False,
+        writer: ChatWriter | None = None,
     ) -> None:
         """Initialize the interactive chat app.
 
@@ -116,6 +118,7 @@ class InteractiveChatApp(ChzzkApp):
             nid_ses: NID_SES cookie value (required for sending).
             allow_offline: Allow connecting when channel is offline.
             inline_mode: Run in inline mode with compact layout.
+            writer: Optional chat writer for logging messages to file.
         """
         super().__init__(config=config, nid_aut=nid_aut, nid_ses=nid_ses)
         self.channel_id = channel_id
@@ -127,6 +130,7 @@ class InteractiveChatApp(ChzzkApp):
         self._chat_task: asyncio.Task | None = None
         self._error_message: str | None = None
         self._connected = False
+        self._writer = writer
 
     def compose(self) -> ComposeResult:
         """Compose the interactive chat UI."""
@@ -185,10 +189,14 @@ class InteractiveChatApp(ChzzkApp):
                 @chat.on_chat
                 async def handle_chat(msg: ChatMessage) -> None:
                     chat_list.add_chat_message(msg)
+                    if self._writer:
+                        self._writer.write_chat(msg)
 
                 @chat.on_donation
                 async def handle_donation(msg: DonationMessage) -> None:
                     chat_list.add_donation_message(msg)
+                    if self._writer:
+                        self._writer.write_donation(msg)
 
                 # Get live detail
                 try:
@@ -274,6 +282,8 @@ class InteractiveChatApp(ChzzkApp):
         try:
             await self._chat.send_message(content)
             chat_list.add_sent_message(content)
+            if self._writer:
+                self._writer.write_sent(content)
         except Exception as e:
             logger.error(f"Failed to send message: {e}")
             chat_list.add_system_message(f"Failed to send: {e}", style="red")

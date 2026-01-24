@@ -8,13 +8,16 @@ import json
 import logging
 import signal
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 import typer
 from rich.console import Console
 
+from chzzk.cli.logging import setup_logging
 from chzzk.cli.tui import can_run_tui, run_tui
 from chzzk.cli.tui.apps import ChatViewerApp, InteractiveChatApp
+from chzzk.cli.writers import ChatWriter, OutputFormat, create_writer
 from chzzk.constants import StatusText
 from chzzk.exceptions import ChatConnectionError, ChatNotLiveError
 from chzzk.unofficial import (
@@ -112,6 +115,21 @@ def watch(
             help="Disable TUI and use simple console output",
         ),
     ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Save chat messages to file",
+        ),
+    ] = None,
+    output_format: Annotated[
+        str,
+        typer.Option(
+            "--output-format",
+            help="Output format: jsonl, txt (default: jsonl)",
+        ),
+    ] = "jsonl",
 ) -> None:
     """Watch real-time chat messages from a channel.
 
@@ -120,37 +138,65 @@ def watch(
 
     By default, displays a full-screen TUI with scrollable messages.
     Use --no-tui for simple console output.
+
+    Use --output to save messages to a file while watching.
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
     config = get_config(ctx)
 
-    # Use TUI if available and not disabled/json mode
-    if not json_output and not no_tui and can_run_tui():
-        viewer_app = ChatViewerApp(
-            config=config,
+    # Create writer if output path specified
+    writer: ChatWriter | None = None
+    if output:
+        try:
+            writer = create_writer(output, OutputFormat(output_format))
+        except ValueError as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+        except OSError as e:
+            console.print(f"[red]Error:[/red] Cannot write to {output}: {e}")
+            raise typer.Exit(1) from None
+
+    try:
+        # Use TUI if available and not disabled/json mode
+        if not json_output and not no_tui and can_run_tui():
+            # Reconfigure logging for TUI mode: disable console output to prevent
+            # logs from corrupting the TUI display, keep file logging if configured
+            setup_logging(
+                ctx.obj.get("log_level", "WARNING"),
+                log_file=ctx.obj.get("log_file"),
+                disable_console=True,
+            )
+
+            viewer_app = ChatViewerApp(
+                config=config,
+                channel_id=channel_id,
+                nid_aut=nid_aut,
+                nid_ses=nid_ses,
+                allow_offline=offline,
+                writer=writer,
+            )
+            run_tui(viewer_app)
+
+            if viewer_app.error_message:
+                console.print(f"[red]Error:[/red] {viewer_app.error_message}")
+                raise typer.Exit(1)
+            return
+
+        # Fallback to console output
+        if not no_tui and not json_output:
+            logger.info("TUI mode unavailable, using console mode")
+        _run_watch_console(
             channel_id=channel_id,
             nid_aut=nid_aut,
             nid_ses=nid_ses,
-            allow_offline=offline,
+            offline=offline,
+            json_output=json_output,
+            writer=writer,
         )
-        run_tui(viewer_app)
-
-        if viewer_app.error_message:
-            console.print(f"[red]Error:[/red] {viewer_app.error_message}")
-            raise typer.Exit(1)
-        return
-
-    # Fallback to console output
-    if not no_tui and not json_output:
-        logger.info("TUI mode unavailable, using console mode")
-    _run_watch_console(
-        channel_id=channel_id,
-        nid_aut=nid_aut,
-        nid_ses=nid_ses,
-        offline=offline,
-        json_output=json_output,
-    )
+    finally:
+        if writer:
+            writer.close()
 
 
 def _run_watch_console(
@@ -160,6 +206,7 @@ def _run_watch_console(
     nid_ses: str | None,
     offline: bool,
     json_output: bool,
+    writer: ChatWriter | None = None,
 ) -> None:
     """Run chat watch with console output (fallback mode)."""
 
@@ -170,10 +217,14 @@ def _run_watch_console(
             @chat.on_chat
             async def handle_chat(msg: ChatMessage) -> None:
                 console.print(format_chat_message(msg, json_output))
+                if writer:
+                    writer.write_chat(msg)
 
             @chat.on_donation
             async def handle_donation(msg: DonationMessage) -> None:
                 console.print(format_donation_message(msg, json_output))
+                if writer:
+                    writer.write_donation(msg)
 
             # Get live detail first to check status
             try:
@@ -301,6 +352,21 @@ def send(
             help="Disable TUI and use simple console input/output",
         ),
     ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Save chat messages to file (interactive mode only)",
+        ),
+    ] = None,
+    output_format: Annotated[
+        str,
+        typer.Option(
+            "--output-format",
+            help="Output format: jsonl, txt (default: jsonl)",
+        ),
+    ] = "jsonl",
 ) -> None:
     """Send a chat message to a channel.
 
@@ -312,6 +378,8 @@ def send(
 
     In interactive mode, displays a full-screen TUI by default.
     Use --no-tui for simple console input/output.
+
+    Use --output to save messages to a file (interactive mode only).
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
@@ -338,45 +406,80 @@ def send(
             )
         raise typer.Exit(1)
 
-    if interactive:
-        # Use TUI if available and not disabled/json mode
-        if not json_output and not no_tui and can_run_tui():
-            interactive_app = InteractiveChatApp(
+    # Warn if output is specified in non-interactive mode
+    if output and not interactive:
+        if not json_output:
+            console.print(
+                "[yellow]Warning:[/yellow] --output is ignored in non-interactive mode."
+            )
+        output = None
+
+    # Create writer if output path specified (interactive mode only)
+    writer: ChatWriter | None = None
+    if output:
+        try:
+            writer = create_writer(output, OutputFormat(output_format))
+        except ValueError as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+        except OSError as e:
+            console.print(f"[red]Error:[/red] Cannot write to {output}: {e}")
+            raise typer.Exit(1) from None
+
+    try:
+        if interactive:
+            # Use TUI if available and not disabled/json mode
+            if not json_output and not no_tui and can_run_tui():
+                # Reconfigure logging for TUI mode: disable console output to prevent
+                # logs from corrupting the TUI display, keep file logging if configured
+                setup_logging(
+                    ctx.obj.get("log_level", "WARNING"),
+                    log_file=ctx.obj.get("log_file"),
+                    disable_console=True,
+                )
+
+                interactive_app = InteractiveChatApp(
+                    config=config,
+                    channel_id=channel_id,
+                    nid_aut=nid_aut,
+                    nid_ses=nid_ses,
+                    allow_offline=offline,
+                    writer=writer,
+                )
+                run_tui(interactive_app)
+
+                if interactive_app.error_message:
+                    console.print(f"[red]Error:[/red] {interactive_app.error_message}")
+                    raise typer.Exit(1)
+                return
+
+            # Fallback to console interactive mode
+            if not no_tui and not json_output:
+                logger.info("TUI mode unavailable, using console mode")
+            _run_interactive_chat_console(
+                ctx=ctx,
                 config=config,
                 channel_id=channel_id,
                 nid_aut=nid_aut,
                 nid_ses=nid_ses,
-                allow_offline=offline,
+                offline=offline,
+                json_output=json_output,
+                writer=writer,
             )
-            run_tui(interactive_app)
-
-            if interactive_app.error_message:
-                console.print(f"[red]Error:[/red] {interactive_app.error_message}")
-                raise typer.Exit(1)
-            return
-
-        # Fallback to console interactive mode
-        if not no_tui and not json_output:
-            logger.info("TUI mode unavailable, using console mode")
-        _run_interactive_chat_console(
-            config=config,
-            channel_id=channel_id,
-            nid_aut=nid_aut,
-            nid_ses=nid_ses,
-            offline=offline,
-            json_output=json_output,
-        )
-    else:
-        # message is guaranteed to be non-None here (checked above)
-        assert message is not None
-        _send_single_message(
-            channel_id=channel_id,
-            message=message,
-            nid_aut=nid_aut,
-            nid_ses=nid_ses,
-            offline=offline,
-            json_output=json_output,
-        )
+        else:
+            # message is guaranteed to be non-None here (checked above)
+            assert message is not None
+            _send_single_message(
+                channel_id=channel_id,
+                message=message,
+                nid_aut=nid_aut,
+                nid_ses=nid_ses,
+                offline=offline,
+                json_output=json_output,
+            )
+    finally:
+        if writer:
+            writer.close()
 
 
 def _send_single_message(
@@ -438,12 +541,14 @@ def _send_single_message(
 
 def _run_interactive_chat_console(
     *,
+    ctx: typer.Context,
     config: ConfigManager,
     channel_id: str,
     nid_aut: str,
     nid_ses: str,
     offline: bool,
     json_output: bool,
+    writer: ChatWriter | None = None,
 ) -> None:
     """Run interactive chat with console input/output (fallback mode).
 
@@ -451,6 +556,14 @@ def _run_interactive_chat_console(
     For JSON mode, uses async stdin reading with timeout on cancellation.
     """
     if not json_output:
+        # Reconfigure logging for inline TUI mode: disable console output to prevent
+        # logs from corrupting the TUI display, keep file logging if configured
+        setup_logging(
+            ctx.obj.get("log_level", "WARNING"),
+            log_file=ctx.obj.get("log_file"),
+            disable_console=True,
+        )
+
         # Use inline Textual app for non-JSON mode - this allows proper cancellation
         interactive_app = InteractiveChatApp(
             config=config,
@@ -459,6 +572,7 @@ def _run_interactive_chat_console(
             nid_ses=nid_ses,
             allow_offline=offline,
             inline_mode=True,
+            writer=writer,
         )
         run_tui(interactive_app, inline=True, inline_height=15)
 
@@ -473,6 +587,7 @@ def _run_interactive_chat_console(
         nid_aut=nid_aut,
         nid_ses=nid_ses,
         offline=offline,
+        writer=writer,
     )
 
 
@@ -482,6 +597,7 @@ def _run_interactive_chat_json(
     nid_aut: str,
     nid_ses: str,
     offline: bool,
+    writer: ChatWriter | None = None,
 ) -> None:
     """Run interactive chat with JSON output (no TUI).
 
@@ -495,10 +611,14 @@ def _run_interactive_chat_json(
             @chat.on_chat
             async def handle_chat(msg: ChatMessage) -> None:
                 console.print(format_chat_message(msg, json_output=True))
+                if writer:
+                    writer.write_chat(msg)
 
             @chat.on_donation
             async def handle_donation(msg: DonationMessage) -> None:
                 console.print(format_donation_message(msg, json_output=True))
+                if writer:
+                    writer.write_donation(msg)
 
             # Get live detail first to check status (validates channel exists)
             try:
@@ -546,6 +666,8 @@ def _run_interactive_chat_json(
                         if line and not stop_event.is_set():
                             await chat.send_message(line)
                             console.print(format_sent_message(line, json_output=True))
+                            if writer:
+                                writer.write_sent(line)
                     except EOFError:
                         # stdin closed
                         break
