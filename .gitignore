@@ -41,3 +41,5 @@ htmlcov/
 CLAUDE.md
 .claude/
 
+*.log
+*.txt
