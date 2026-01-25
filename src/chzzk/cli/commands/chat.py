@@ -126,6 +126,7 @@ def watch(
         typer.Option(
             "--output",
             "-o",
+            envvar="CHZZK_CHAT_OUTPUT",
             help="Save chat messages to file",
         ),
     ] = None,
@@ -133,6 +134,7 @@ def watch(
         str,
         typer.Option(
             "--output-format",
+            envvar="CHZZK_CHAT_OUTPUT_FORMAT",
             help="Output format: jsonl, txt (default: jsonl)",
         ),
     ] = "jsonl",
@@ -421,6 +423,7 @@ def send(
         typer.Option(
             "--output",
             "-o",
+            envvar="CHZZK_CHAT_OUTPUT",
             help="Save chat messages to file (interactive mode only)",
         ),
     ] = None,
@@ -428,6 +431,7 @@ def send(
         str,
         typer.Option(
             "--output-format",
+            envvar="CHZZK_CHAT_OUTPUT_FORMAT",
             help="Output format: jsonl, txt (default: jsonl)",
         ),
     ] = "jsonl",
