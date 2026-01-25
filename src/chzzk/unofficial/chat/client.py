@@ -295,7 +295,7 @@ class UnofficialChatClient:
             except Exception as e:
                 logger.error("Error in on_offline handler: %s", e)
 
-    def _handle_chat_channel_change(self, old_id: str, new_id: str) -> None:
+    def _handle_chat_channel_change(self, old_id: str | None, new_id: str) -> None:
         """Handle chat channel ID change - trigger reconnection."""
         if not self._auto_reconnect:
             return
@@ -309,7 +309,7 @@ class UnofficialChatClient:
         finally:
             self._reconnecting.release()
 
-    def _perform_reconnection(self, old_id: str, new_id: str) -> None:
+    def _perform_reconnection(self, old_id: str | None, new_id: str) -> None:
         """Perform the actual reconnection with exponential backoff."""
         self._reconnect_attempt = 0
         max_attempts = self._monitor_config.max_reconnect_attempts
@@ -365,8 +365,14 @@ class UnofficialChatClient:
                 # Wait for connection
                 if self._connected.wait(timeout=10.0):
                     # Success - notify handlers
+                    # Use STREAM_RESTARTED when old_id is None (stream was offline)
+                    reason = (
+                        ReconnectReason.STREAM_RESTARTED
+                        if old_id is None
+                        else ReconnectReason.CHAT_CHANNEL_CHANGED
+                    )
                     event = ReconnectEvent(
-                        reason=ReconnectReason.CHAT_CHANNEL_CHANGED,
+                        reason=reason,
                         old_chat_channel_id=old_id,
                         new_chat_channel_id=new_id,
                         attempt=self._reconnect_attempt,
@@ -695,6 +701,7 @@ class AsyncUnofficialChatClient:
         self._monitor: AsyncStatusMonitor | None = None
         self._reconnecting = asyncio.Lock()
         self._reconnect_attempt = 0
+        self._reconnect_complete = asyncio.Event()
         self._message_loop_task: asyncio.Task[None] | None = None
 
         # Event handlers
@@ -876,7 +883,7 @@ class AsyncUnofficialChatClient:
             except Exception as e:
                 logger.error("Error in on_offline handler: %s", e)
 
-    async def _handle_chat_channel_change(self, old_id: str, new_id: str) -> None:
+    async def _handle_chat_channel_change(self, old_id: str | None, new_id: str) -> None:
         """Handle chat channel ID change - trigger reconnection."""
         if not self._auto_reconnect:
             return
@@ -884,7 +891,7 @@ class AsyncUnofficialChatClient:
         async with self._reconnecting:
             await self._perform_reconnection(old_id, new_id)
 
-    async def _perform_reconnection(self, old_id: str, new_id: str) -> None:
+    async def _perform_reconnection(self, old_id: str | None, new_id: str) -> None:
         """Perform the actual reconnection with exponential backoff."""
         import websockets
 
@@ -956,8 +963,14 @@ class AsyncUnofficialChatClient:
                     continue
 
                 # Success - notify handlers
+                # Use STREAM_RESTARTED when old_id is None (stream was offline)
+                reason = (
+                    ReconnectReason.STREAM_RESTARTED
+                    if old_id is None
+                    else ReconnectReason.CHAT_CHANNEL_CHANGED
+                )
                 event = ReconnectEvent(
-                    reason=ReconnectReason.CHAT_CHANNEL_CHANGED,
+                    reason=reason,
                     old_chat_channel_id=old_id,
                     new_chat_channel_id=new_id,
                     attempt=self._reconnect_attempt,
@@ -971,6 +984,8 @@ class AsyncUnofficialChatClient:
                         logger.error("Error in on_reconnect handler: %s", e)
 
                 self._reconnect_attempt = 0
+                # Signal that reconnection is complete for run_forever() to resume
+                self._reconnect_complete.set()
                 return
 
             except Exception as e:
@@ -1045,23 +1060,42 @@ class AsyncUnofficialChatClient:
 
         self._stop_requested = False
 
-        try:
-            async for message in self._ws:
-                if self._stop_requested:
-                    break
+        while not self._stop_requested:
+            try:
+                async for message in self._ws:
+                    if self._stop_requested:
+                        break
 
+                    try:
+                        await self._handle_message(message)
+                    except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
+                        logger.debug("Failed to handle WebSocket message: %s", e)
+
+            except asyncio.CancelledError:
+                break
+            except OSError as e:
+                # WebSocket connection errors (e.g., connection reset)
+                logger.debug("WebSocket connection error: %s", e)
+
+            # WebSocket closed - check if we should wait for reconnection
+            if self._stop_requested:
+                break
+
+            if self._auto_reconnect:
+                # Wait for the monitor to trigger reconnection
+                logger.info("Connection lost, waiting for reconnection...")
+                self._reconnect_complete.clear()
                 try:
-                    await self._handle_message(message)
-                except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
-                    logger.debug("Failed to handle WebSocket message: %s", e)
+                    # Wait up to 5 minutes for reconnection
+                    await asyncio.wait_for(self._reconnect_complete.wait(), timeout=300)
+                    if self._ws and self._connected.is_set():
+                        logger.info("Reconnection complete, resuming message loop")
+                        continue  # Resume with new WebSocket
+                except TimeoutError:
+                    logger.warning("Reconnection wait timeout")
+            break
 
-        except asyncio.CancelledError:
-            pass
-        except OSError as e:
-            # WebSocket connection errors (e.g., connection reset)
-            logger.debug("WebSocket connection error: %s", e)
-        finally:
-            await self.disconnect()
+        await self.disconnect()
 
     async def _handle_message(self, message: str | bytes) -> None:
         """Handle incoming WebSocket message."""
