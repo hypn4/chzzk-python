@@ -14,6 +14,7 @@ class ReconnectReason(StrEnum):
 
     CHAT_CHANNEL_CHANGED = "chat_channel_changed"
     BROADCAST_STARTED = "broadcast_started"
+    STREAM_RESTARTED = "stream_restarted"
     CONNECTION_LOST = "connection_lost"
 
 
