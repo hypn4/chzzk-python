@@ -1,6 +1,6 @@
 # Chzzk 비공식 채팅 WebSocket 프로토콜 분석
 
-> 최종 업데이트: 2026-01-23
+> 최종 업데이트: 2026-01-25
 > 분석 방법: Chrome DevTools WebSocket 메시지 캡처
 
 ## 개요
@@ -255,6 +255,174 @@ GET https://api.chzzk.naver.com/service/v1/user/status
 
 ---
 
+## 수신 메시지 구조
+
+### 6. CHAT (cmd: 93101)
+
+실시간 채팅 메시지 수신.
+
+```json
+{
+  "ver": "3",
+  "cmd": 93101,
+  "svcid": "game",
+  "cid": "N2FOy2",
+  "bdy": [
+    {
+      "svcid": "game",
+      "cid": "N2FOy2",
+      "mbrCnt": 1234,
+      "uid": "14f67c97d654f655afc0c9b3********",
+      "profile": "{\"userIdHash\":\"14f67c97...\",\"nickname\":\"닉네임\",\"profileImageUrl\":\"...\",\"userRoleCode\":\"common_user\",\"badge\":null,\"title\":null,\"verifiedMark\":false,\"activityBadges\":[{\"badgeNo\":123,\"badgeId\":\"구독자\",\"name\":\"구독자\",\"imageUrl\":\"...\"}],\"streamingProperty\":{}}",
+      "msg": "안녕하세요!",
+      "msgTypeCode": 1,
+      "msgStatusType": "NORMAL",
+      "extras": "{\"chatType\":\"STREAMING\",\"osType\":\"PC\",\"emojis\":{}}",
+      "ctime": 1769139665965,
+      "utime": 1769139665965,
+      "msgTime": 1769139665965
+    }
+  ]
+}
+```
+
+**bdy 배열 내 메시지 필드:**
+
+| 필드 | 설명 |
+|------|------|
+| `uid` | 사용자 ID 해시 |
+| `profile` | 사용자 프로필 (JSON 문자열, 아래 참조) |
+| `msg` | 메시지 내용 |
+| `msgTypeCode` | 메시지 타입 (`1` = 일반 텍스트, `10` = 후원 메시지) |
+| `msgStatusType` | 메시지 상태 (`NORMAL`, `HIDDEN` 등) |
+| `extras` | 추가 데이터 (JSON 문자열) |
+| `ctime` | 생성 시간 (밀리초) |
+| `msgTime` | 메시지 시간 (밀리초) |
+| `mbrCnt` | 현재 시청자 수 |
+
+### 7. DONATION (cmd: 93102)
+
+후원 메시지 수신.
+
+```json
+{
+  "ver": "3",
+  "cmd": 93102,
+  "svcid": "game",
+  "cid": "N2FOy2",
+  "bdy": [
+    {
+      "uid": "14f67c97d654f655afc0c9b3********",
+      "profile": "{...}",
+      "msg": "응원합니다!",
+      "msgTypeCode": 10,
+      "msgStatusType": "NORMAL",
+      "extras": "{\"payType\":\"CURRENCY\",\"payAmount\":1000,\"donationType\":\"CHAT\",...}",
+      "msgTime": 1769139665965
+    }
+  ]
+}
+```
+
+**중요**: 후원 관련 필드(`payType`, `payAmount`, `donationType`)는 **`extras` JSON 문자열 내부**에 있습니다. 최상위 필드가 아닙니다.
+
+**extras 필드 파싱 후 전체 구조:**
+
+```json
+{
+  "emojis": {},
+  "streamingChannelId": "a9b3377345a2a37e68a6072ba5e77fec",
+  "donationId": "6alUxGqGBsQvsGNE1eoa0lV9JGEBl",
+  "donationType": "CHAT",
+  "payType": "CURRENCY",
+  "payAmount": 1000,
+  "nickname": "닉네임",
+  "osType": "PC",
+  "chatType": "STREAMING",
+  "isAnonymous": false,
+  "continuousDonationDays": 1,
+  "weeklyRankList": [...],
+  "donationUserWeeklyRank": {...}
+}
+```
+
+**extras 필드 내 DONATION 전용 필드:**
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `payType` | string | 결제 타입 (`CURRENCY` = 치즈, `CHEESE` 등) |
+| `payAmount` | int | 결제 금액 (KRW, 정수) |
+| `donationType` | string | 후원 타입 (`CHAT`, `VIDEO` 등) |
+| `donationId` | string | 후원 고유 ID |
+| `isAnonymous` | boolean | 익명 여부 |
+| `nickname` | string | 후원자 닉네임 (extras 내에도 포함) |
+| `continuousDonationDays` | int | 연속 후원 일수 |
+| `weeklyRankList` | array | 주간 후원 랭킹 목록 (상위 10명) |
+| `donationUserWeeklyRank` | object | 후원자의 주간 랭킹 정보 |
+
+---
+
+## profile 필드 구조
+
+`profile` 필드는 JSON 문자열로 인코딩되어 있으며, 파싱 후 다음 구조를 가짐:
+
+```json
+{
+  "userIdHash": "14f67c97d654f655afc0c9b3********",
+  "nickname": "닉네임",
+  "profileImageUrl": "https://...",
+  "userRoleCode": "common_user",
+  "badge": null,
+  "title": null,
+  "verifiedMark": false,
+  "activityBadges": [
+    {
+      "badgeNo": 1708498,
+      "badgeId": "donation_accumulate_amount_lv1",
+      "name": "치즈 후원자",
+      "imageUrl": "https://ssl.pstatic.net/static/nng/glive/icon/cheese01.png",
+      "activated": true
+    }
+  ],
+  "streamingProperty": {
+    "nicknameColor": {"colorCode": "CC000"},
+    "activatedAchievementBadgeIds": []
+  },
+  "viewerBadges": [
+    {
+      "type": "STANDARD",
+      "badge": {
+        "badgeId": "donation_accumulate_amount_lv1",
+        "scope": "CHANNEL",
+        "imageUrl": "https://ssl.pstatic.net/static/nng/glive/badge/recent_cheese01.png"
+      }
+    }
+  ]
+}
+```
+
+**주요 필드 설명:**
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `userIdHash` | string | 사용자 ID 해시 |
+| `nickname` | string | 닉네임 |
+| `profileImageUrl` | string | 프로필 이미지 URL |
+| `userRoleCode` | string | 권한 코드 (`common_user`, `streamer`, `manager` 등) |
+| `badge` | object \| null | 대표 배지 (`name`, `imageUrl` 등) |
+| `title` | object \| null | 칭호 (`name`, `color` 등) |
+| `verifiedMark` | boolean | 인증 마크 여부 |
+| `activityBadges` | array | 활동 배지 목록 (구독, 후원 레벨 등) |
+| `streamingProperty` | object | 스트리밍 속성 (닉네임 색상 등) |
+| `viewerBadges` | array | 시청자 배지 목록 (채널별/글로벌 배지) |
+
+**참고**: `badge`와 `activityBadges`는 서로 다른 필드입니다:
+- `badge`: 단일 대표 배지 (스트리머가 지정한 배지, 대부분 null)
+- `activityBadges`: 활동 기반 배지 목록 (구독자, 후원 레벨 등)
+- `viewerBadges`: 시청자 배지 (채널/글로벌 스코프)
+
+---
+
 ## 주의사항
 
 1. **프로토콜 버전**: 모든 메시지에 `"ver": "3"` 사용
@@ -269,4 +437,5 @@ GET https://api.chzzk.naver.com/service/v1/user/status
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-01-25 | CHAT/DONATION 메시지 구조 추가, profile 필드 상세 문서화 |
 | 2026-01-23 | 최초 작성. Chrome DevTools WebSocket 캡처 기반 프로토콜 분석 |
