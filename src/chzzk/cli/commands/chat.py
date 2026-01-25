@@ -27,6 +27,7 @@ from chzzk.unofficial import (
     DonationMessage,
     UnofficialChzzkClient,
 )
+from chzzk.unofficial.models.reconnect import ReconnectEvent, ReconnectReason, StatusChangeEvent
 
 if TYPE_CHECKING:
     from chzzk.cli.config import ConfigManager
@@ -241,6 +242,68 @@ def _run_watch_console(
                     console.print(formatter.format_donation(msg))
                 if writer:
                     writer.write_donation(msg)
+
+            @chat.on_live
+            async def handle_live(event: StatusChangeEvent) -> None:
+                if json_output:
+                    console.print(
+                        json.dumps(
+                            {
+                                "event": "live",
+                                "live_id": event.live_id,
+                                "title": event.live_title,
+                            }
+                        )
+                    )
+                else:
+                    title = event.live_title or "제목 없음"
+                    console.print(f"\n[green]방송이 시작되었습니다![/green] {title}")
+
+            @chat.on_offline
+            async def handle_offline(event: StatusChangeEvent) -> None:
+                if json_output:
+                    console.print(
+                        json.dumps(
+                            {
+                                "event": "offline",
+                                "live_id": event.live_id,
+                                "title": event.live_title,
+                            }
+                        )
+                    )
+                else:
+                    console.print(
+                        "\n[yellow]방송이 종료되었습니다.[/yellow] "
+                        "재시작을 기다리는 중... (Ctrl+C로 종료)"
+                    )
+
+            @chat.on_reconnect
+            async def handle_reconnect(event: ReconnectEvent) -> None:
+                if json_output:
+                    console.print(
+                        json.dumps(
+                            {
+                                "event": "reconnect",
+                                "reason": event.reason.value,
+                                "old_chat_channel_id": event.old_chat_channel_id,
+                                "new_chat_channel_id": event.new_chat_channel_id,
+                            }
+                        )
+                    )
+                else:
+                    if event.reason == ReconnectReason.STREAM_RESTARTED:
+                        console.print("[green]채팅에 다시 연결되었습니다.[/green]\n")
+                    else:
+                        console.print(
+                            "[yellow]채팅 채널이 변경되어 다시 연결되었습니다.[/yellow]\n"
+                        )
+
+            @chat.on_reconnect_error
+            async def handle_reconnect_error(error: Exception) -> None:
+                if json_output:
+                    console.print(json.dumps({"event": "reconnect_error", "error": str(error)}))
+                else:
+                    console.print(f"[red]재연결 실패:[/red] {error}")
 
             # Get live detail first to check status
             try:
@@ -623,6 +686,47 @@ def _run_interactive_chat_json(
                 console.print(format_donation_message_json(msg))
                 if writer:
                     writer.write_donation(msg)
+
+            @chat.on_live
+            async def handle_live(event: StatusChangeEvent) -> None:
+                console.print(
+                    json.dumps(
+                        {
+                            "event": "live",
+                            "live_id": event.live_id,
+                            "title": event.live_title,
+                        }
+                    )
+                )
+
+            @chat.on_offline
+            async def handle_offline(event: StatusChangeEvent) -> None:
+                console.print(
+                    json.dumps(
+                        {
+                            "event": "offline",
+                            "live_id": event.live_id,
+                            "title": event.live_title,
+                        }
+                    )
+                )
+
+            @chat.on_reconnect
+            async def handle_reconnect(event: ReconnectEvent) -> None:
+                console.print(
+                    json.dumps(
+                        {
+                            "event": "reconnect",
+                            "reason": event.reason.value,
+                            "old_chat_channel_id": event.old_chat_channel_id,
+                            "new_chat_channel_id": event.new_chat_channel_id,
+                        }
+                    )
+                )
+
+            @chat.on_reconnect_error
+            async def handle_reconnect_error(error: Exception) -> None:
+                console.print(json.dumps({"event": "reconnect_error", "error": str(error)}))
 
             # Get live detail first to check status (validates channel exists)
             try:
