@@ -236,7 +236,7 @@ class TestTextWriter:
         writer.close()
 
         content = output_file.read_text()
-        assert "$10000 GenerousDonor: Great stream!" in content
+        assert "10000원 GenerousDonor: Great stream!" in content
 
     def test_write_donation_no_content(
         self, tmp_path: Path, mock_donation_message_no_content: MagicMock
@@ -249,7 +249,7 @@ class TestTextWriter:
         writer.close()
 
         content = output_file.read_text()
-        assert "$5000 SilentDonor:" in content
+        assert "5000원 SilentDonor:" in content
 
     def test_write_sent(self, tmp_path: Path) -> None:
         """Test writing a sent message in text format."""
