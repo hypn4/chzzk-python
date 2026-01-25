@@ -12,6 +12,7 @@ from textual.message import Message
 from textual.widgets import Input, RichLog
 
 if TYPE_CHECKING:
+    from chzzk.cli.formatter import ChatFormatter
     from chzzk.unofficial import ChatMessage, DonationMessage
 
 
@@ -49,6 +50,7 @@ class ChatMessageList(RichLog):
         self,
         *,
         max_messages: int = MAX_MESSAGES,
+        formatter: ChatFormatter | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
@@ -56,6 +58,7 @@ class ChatMessageList(RichLog):
 
         Args:
             max_messages: Maximum number of messages to keep in buffer.
+            formatter: ChatFormatter for message formatting. Uses default if None.
             id: Widget ID.
             classes: CSS classes.
         """
@@ -69,6 +72,7 @@ class ChatMessageList(RichLog):
         )
         self.max_messages = max_messages
         self._message_count = 0
+        self._formatter = formatter
 
     def add_chat_message(self, msg: ChatMessage) -> None:
         """Add a chat message to the list.
@@ -76,7 +80,10 @@ class ChatMessageList(RichLog):
         Args:
             msg: The chat message to display.
         """
-        formatted = self._format_chat_message(msg)
+        if self._formatter:
+            formatted = self._formatter.format_chat_text(msg)
+        else:
+            formatted = self._format_chat_message_fallback(msg)
         self._write_message(formatted)
 
     def add_donation_message(self, msg: DonationMessage) -> None:
@@ -85,7 +92,10 @@ class ChatMessageList(RichLog):
         Args:
             msg: The donation message to display.
         """
-        formatted = self._format_donation_message(msg)
+        if self._formatter:
+            formatted = self._formatter.format_donation_text(msg)
+        else:
+            formatted = self._format_donation_message_fallback(msg)
         self._write_message(formatted)
 
     def add_sent_message(self, content: str) -> None:
@@ -94,11 +104,14 @@ class ChatMessageList(RichLog):
         Args:
             content: The message content that was sent.
         """
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        text = Text()
-        text.append(f"{timestamp} ", style="dim")
-        text.append("> ", style="green bold")
-        text.append(content, style="green")
+        if self._formatter:
+            text = self._formatter.format_sent_text(content)
+        else:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            text = Text()
+            text.append(f"{timestamp} ", style="dim")
+            text.append("> ", style="green bold")
+            text.append(content, style="green")
         self._write_message(text)
 
     def add_system_message(self, content: str, style: str = "yellow") -> None:
@@ -108,14 +121,17 @@ class ChatMessageList(RichLog):
             content: The system message content.
             style: Rich style for the message.
         """
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        text = Text()
-        text.append(f"{timestamp} ", style="dim")
-        text.append(content, style=style)
+        if self._formatter:
+            text = self._formatter.format_system_text(content, style)
+        else:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            text = Text()
+            text.append(f"{timestamp} ", style="dim")
+            text.append(content, style=style)
         self._write_message(text)
 
-    def _format_chat_message(self, msg: ChatMessage) -> Text:
-        """Format a chat message for display.
+    def _format_chat_message_fallback(self, msg: ChatMessage) -> Text:
+        """Format a chat message for display (fallback when no formatter).
 
         Args:
             msg: The chat message to format.
@@ -128,19 +144,35 @@ class ChatMessageList(RichLog):
         text.append(f"{timestamp} ", style="dim")
 
         # Add badge if present
-        if msg.profile and msg.profile.badge:
-            badge_name = msg.profile.badge.get("name")
-            if badge_name:
-                text.append(f"[{badge_name}] ", style="magenta")
+        badge_name = None
+        if msg.profile:
+            # 1. Check profile.badge dict
+            if msg.profile.badge:
+                badge_name = msg.profile.badge.get("name") or msg.profile.badge.get("title")
 
-        text.append(f"{msg.nickname}", style="cyan")
+            # 2. Check activity_badges list
+            if not badge_name and msg.profile.activity_badges:
+                for activity_badge in msg.profile.activity_badges:
+                    if isinstance(activity_badge, dict):
+                        badge_name = (
+                            activity_badge.get("name")
+                            or activity_badge.get("title")
+                            or activity_badge.get("badgeName")
+                        )
+                        if badge_name:
+                            break
+
+        if badge_name:
+            text.append(f"[{badge_name}] ", style="magenta")
+
+        text.append(msg.nickname or "", style="cyan")
         text.append(": ")
         text.append(msg.content or "")
 
         return text
 
-    def _format_donation_message(self, msg: DonationMessage) -> Text:
-        """Format a donation message for display.
+    def _format_donation_message_fallback(self, msg: DonationMessage) -> Text:
+        """Format a donation message for display (fallback when no formatter).
 
         Args:
             msg: The donation message to format.
@@ -151,8 +183,31 @@ class ChatMessageList(RichLog):
         timestamp = datetime.now().strftime("%H:%M:%S")
         text = Text()
         text.append(f"{timestamp} ", style="dim")
-        text.append(f"${msg.pay_amount} ", style="yellow bold")
-        text.append(f"{msg.nickname}", style="magenta bold")
+        text.append(f"{msg.pay_amount}원 ", style="yellow bold")
+
+        # Add badge if present
+        badge_name = None
+        if msg.profile:
+            # 1. Check profile.badge dict
+            if msg.profile.badge:
+                badge_name = msg.profile.badge.get("name") or msg.profile.badge.get("title")
+
+            # 2. Check activity_badges list
+            if not badge_name and msg.profile.activity_badges:
+                for activity_badge in msg.profile.activity_badges:
+                    if isinstance(activity_badge, dict):
+                        badge_name = (
+                            activity_badge.get("name")
+                            or activity_badge.get("title")
+                            or activity_badge.get("badgeName")
+                        )
+                        if badge_name:
+                            break
+
+        if badge_name:
+            text.append(f"[{badge_name}] ", style="magenta")
+
+        text.append(msg.nickname or "", style="magenta bold")
         text.append(": ")
         text.append(msg.content or "", style="white")
 

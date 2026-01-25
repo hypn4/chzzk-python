@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 from rich.console import Console
 
+from chzzk.cli.formatter import ChatFormatter, FormatConfig
 from chzzk.cli.logging import setup_logging
 from chzzk.cli.tui import can_run_tui, run_tui
 from chzzk.cli.tui.apps import ChatViewerApp, InteractiveChatApp
@@ -49,48 +50,52 @@ def get_auth_cookies(ctx: typer.Context) -> tuple[str | None, str | None]:
     )
 
 
-def format_chat_message(msg: ChatMessage, json_output: bool = False) -> str:
-    """Format a chat message for display."""
-    if json_output:
-        return json.dumps(
-            {
-                "type": "chat",
-                "timestamp": datetime.now().isoformat(),
-                "user_id_hash": msg.user_id_hash,
-                "nickname": msg.nickname,
-                "content": msg.content,
-                "badge": (
-                    msg.profile.badge.get("name") if msg.profile and msg.profile.badge else None
-                ),
-            }
-        )
-
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    badge = ""
-    if msg.profile and msg.profile.badge:
-        badge = f"[{msg.profile.badge.get('name')}] " if msg.profile.badge.get("name") else ""
-
-    return f"[dim]{timestamp}[/dim] {badge}[cyan]{msg.nickname}[/cyan]: {msg.content}"
+def get_format_config(ctx: typer.Context) -> FormatConfig:
+    """Get FormatConfig from context."""
+    return FormatConfig.from_env_and_cli(
+        cli_chat_format=ctx.obj.get("chat_format"),
+        cli_donation_format=ctx.obj.get("donation_format"),
+        cli_sent_format=ctx.obj.get("sent_format"),
+        cli_time_format=ctx.obj.get("time_format"),
+    )
 
 
-def format_donation_message(msg: DonationMessage, json_output: bool = False) -> str:
-    """Format a donation message for display."""
-    if json_output:
-        return json.dumps(
-            {
-                "type": "donation",
-                "timestamp": datetime.now().isoformat(),
-                "user_id_hash": msg.user_id_hash,
-                "nickname": msg.nickname,
-                "content": msg.content,
-                "pay_amount": msg.pay_amount,
-            }
-        )
+def format_chat_message_json(msg: ChatMessage) -> str:
+    """Format a chat message as JSON."""
+    return json.dumps(
+        {
+            "type": "chat",
+            "timestamp": datetime.now().isoformat(),
+            "user_id_hash": msg.user_id_hash,
+            "nickname": msg.nickname,
+            "content": msg.content,
+            "badge": (msg.profile.badge.get("name") if msg.profile and msg.profile.badge else None),
+        }
+    )
 
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    return (
-        f"[dim]{timestamp}[/dim] [yellow]${msg.pay_amount}[/yellow] "
-        f"[magenta]{msg.nickname}[/magenta]: {msg.content or ''}"
+
+def format_donation_message_json(msg: DonationMessage) -> str:
+    """Format a donation message as JSON."""
+    return json.dumps(
+        {
+            "type": "donation",
+            "timestamp": datetime.now().isoformat(),
+            "user_id_hash": msg.user_id_hash,
+            "nickname": msg.nickname,
+            "content": msg.content,
+            "pay_amount": msg.pay_amount,
+        }
+    )
+
+
+def format_sent_message_json(content: str) -> str:
+    """Format a sent message as JSON."""
+    return json.dumps(
+        {
+            "type": "sent",
+            "timestamp": datetime.now().isoformat(),
+            "content": content,
+        }
     )
 
 
@@ -144,6 +149,7 @@ def watch(
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
     config = get_config(ctx)
+    format_config = get_format_config(ctx)
 
     # Create writer if output path specified
     writer: ChatWriter | None = None
@@ -175,6 +181,7 @@ def watch(
                 nid_ses=nid_ses,
                 allow_offline=offline,
                 writer=writer,
+                format_config=format_config,
             )
             run_tui(viewer_app)
 
@@ -193,6 +200,7 @@ def watch(
             offline=offline,
             json_output=json_output,
             writer=writer,
+            format_config=format_config,
         )
     finally:
         if writer:
@@ -207,8 +215,10 @@ def _run_watch_console(
     offline: bool,
     json_output: bool,
     writer: ChatWriter | None = None,
+    format_config: FormatConfig | None = None,
 ) -> None:
     """Run chat watch with console output (fallback mode)."""
+    formatter = ChatFormatter(format_config)
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
@@ -216,13 +226,19 @@ def _run_watch_console(
 
             @chat.on_chat
             async def handle_chat(msg: ChatMessage) -> None:
-                console.print(format_chat_message(msg, json_output))
+                if json_output:
+                    console.print(format_chat_message_json(msg))
+                else:
+                    console.print(formatter.format_chat(msg))
                 if writer:
                     writer.write_chat(msg)
 
             @chat.on_donation
             async def handle_donation(msg: DonationMessage) -> None:
-                console.print(format_donation_message(msg, json_output))
+                if json_output:
+                    console.print(format_donation_message_json(msg))
+                else:
+                    console.print(formatter.format_donation(msg))
                 if writer:
                     writer.write_donation(msg)
 
@@ -304,21 +320,6 @@ def _run_watch_console(
         asyncio.run(run_chat())
 
 
-def format_sent_message(content: str, json_output: bool = False) -> str:
-    """Format a sent message for display."""
-    if json_output:
-        return json.dumps(
-            {
-                "type": "sent",
-                "timestamp": datetime.now().isoformat(),
-                "content": content,
-            }
-        )
-
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    return f"[dim]{timestamp}[/dim] [green bold]>[/green bold] [green]{content}[/green]"
-
-
 @app.command()
 def send(
     ctx: typer.Context,
@@ -384,6 +385,7 @@ def send(
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
     config = get_config(ctx)
+    format_config = get_format_config(ctx)
 
     if not nid_aut or not nid_ses:
         if json_output:
@@ -409,9 +411,7 @@ def send(
     # Warn if output is specified in non-interactive mode
     if output and not interactive:
         if not json_output:
-            console.print(
-                "[yellow]Warning:[/yellow] --output is ignored in non-interactive mode."
-            )
+            console.print("[yellow]Warning:[/yellow] --output is ignored in non-interactive mode.")
         output = None
 
     # Create writer if output path specified (interactive mode only)
@@ -445,6 +445,7 @@ def send(
                     nid_ses=nid_ses,
                     allow_offline=offline,
                     writer=writer,
+                    format_config=format_config,
                 )
                 run_tui(interactive_app)
 
@@ -465,6 +466,7 @@ def send(
                 offline=offline,
                 json_output=json_output,
                 writer=writer,
+                format_config=format_config,
             )
         else:
             # message is guaranteed to be non-None here (checked above)
@@ -549,6 +551,7 @@ def _run_interactive_chat_console(
     offline: bool,
     json_output: bool,
     writer: ChatWriter | None = None,
+    format_config: FormatConfig | None = None,
 ) -> None:
     """Run interactive chat with console input/output (fallback mode).
 
@@ -573,6 +576,7 @@ def _run_interactive_chat_console(
             allow_offline=offline,
             inline_mode=True,
             writer=writer,
+            format_config=format_config,
         )
         run_tui(interactive_app, inline=True, inline_height=15)
 
@@ -610,13 +614,13 @@ def _run_interactive_chat_json(
 
             @chat.on_chat
             async def handle_chat(msg: ChatMessage) -> None:
-                console.print(format_chat_message(msg, json_output=True))
+                console.print(format_chat_message_json(msg))
                 if writer:
                     writer.write_chat(msg)
 
             @chat.on_donation
             async def handle_donation(msg: DonationMessage) -> None:
-                console.print(format_donation_message(msg, json_output=True))
+                console.print(format_donation_message_json(msg))
                 if writer:
                     writer.write_donation(msg)
 
@@ -665,7 +669,7 @@ def _run_interactive_chat_json(
                         line = await asyncio.to_thread(input)
                         if line and not stop_event.is_set():
                             await chat.send_message(line)
-                            console.print(format_sent_message(line, json_output=True))
+                            console.print(format_sent_message_json(line))
                             if writer:
                                 writer.write_sent(line)
                     except EOFError:

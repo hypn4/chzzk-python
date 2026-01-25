@@ -13,6 +13,7 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.widgets import Footer, Static
 
+from chzzk.cli.formatter import ChatFormatter, FormatConfig
 from chzzk.cli.tui.base import ChzzkApp
 from chzzk.cli.tui.widgets.chat import ChatInput, ChatMessageList
 from chzzk.constants import StatusText
@@ -108,6 +109,7 @@ class InteractiveChatApp(ChzzkApp):
         allow_offline: bool = False,
         inline_mode: bool = False,
         writer: ChatWriter | None = None,
+        format_config: FormatConfig | None = None,
     ) -> None:
         """Initialize the interactive chat app.
 
@@ -119,6 +121,7 @@ class InteractiveChatApp(ChzzkApp):
             allow_offline: Allow connecting when channel is offline.
             inline_mode: Run in inline mode with compact layout.
             writer: Optional chat writer for logging messages to file.
+            format_config: Format configuration for chat messages.
         """
         super().__init__(config=config, nid_aut=nid_aut, nid_ses=nid_ses)
         self.channel_id = channel_id
@@ -131,13 +134,14 @@ class InteractiveChatApp(ChzzkApp):
         self._error_message: str | None = None
         self._connected = False
         self._writer = writer
+        self._formatter = ChatFormatter(format_config)
 
     def compose(self) -> ComposeResult:
         """Compose the interactive chat UI."""
         yield Static("Chzzk Interactive Chat", id="header")
         yield Static("Connecting...", id="status", classes="status-connecting")
         with VerticalScroll(id="chat-container"):
-            yield ChatMessageList(id="chat-messages")
+            yield ChatMessageList(formatter=self._formatter, id="chat-messages")
         yield ChatInput(placeholder="Type a message and press Enter...", id="chat-input")
         yield Footer()
 

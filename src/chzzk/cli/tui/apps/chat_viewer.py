@@ -12,6 +12,7 @@ from textual.binding import Binding
 from textual.containers import Container
 from textual.widgets import Footer, Static
 
+from chzzk.cli.formatter import ChatFormatter, FormatConfig
 from chzzk.cli.tui.base import ChzzkApp
 from chzzk.cli.tui.widgets.chat import ChatMessageList
 from chzzk.constants import StatusText
@@ -90,6 +91,7 @@ class ChatViewerApp(ChzzkApp):
         nid_ses: str | None = None,
         allow_offline: bool = False,
         writer: ChatWriter | None = None,
+        format_config: FormatConfig | None = None,
     ) -> None:
         """Initialize the chat viewer app.
 
@@ -100,6 +102,7 @@ class ChatViewerApp(ChzzkApp):
             nid_ses: NID_SES cookie value (optional).
             allow_offline: Allow connecting when channel is offline.
             writer: Optional chat writer for logging messages to file.
+            format_config: Format configuration for chat messages.
         """
         super().__init__(config=config, nid_aut=nid_aut, nid_ses=nid_ses)
         self.channel_id = channel_id
@@ -109,13 +112,14 @@ class ChatViewerApp(ChzzkApp):
         self._chat_task: asyncio.Task | None = None
         self._error_message: str | None = None
         self._writer = writer
+        self._formatter = ChatFormatter(format_config)
 
     def compose(self) -> ComposeResult:
         """Compose the chat viewer UI."""
         yield Static("Chzzk Chat Viewer", id="header")
         yield Static("Connecting...", id="status", classes="status-connecting")
         with Container(id="chat-container"):
-            yield ChatMessageList(id="chat-messages")
+            yield ChatMessageList(formatter=self._formatter, id="chat-messages")
         yield Footer()
 
     async def on_mount(self) -> None:

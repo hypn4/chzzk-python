@@ -77,6 +77,38 @@ def main(
             help="Disable console (stderr) logging output",
         ),
     ] = False,
+    chat_format: Annotated[
+        str | None,
+        typer.Option(
+            "--chat-format",
+            envvar="CHZZK_CHAT_FORMAT",
+            help="Chat message format template (e.g., '{time} {badge}{name}: {msg}')",
+        ),
+    ] = None,
+    donation_format: Annotated[
+        str | None,
+        typer.Option(
+            "--donation-format",
+            envvar="CHZZK_DONATION_FORMAT",
+            help="Donation message format template (e.g., '{time} ${amount} {name}: {msg}')",
+        ),
+    ] = None,
+    sent_format: Annotated[
+        str | None,
+        typer.Option(
+            "--sent-format",
+            envvar="CHZZK_SENT_FORMAT",
+            help="Sent message format template (e.g., '{time} > {msg}')",
+        ),
+    ] = None,
+    time_format: Annotated[
+        str | None,
+        typer.Option(
+            "--time-format",
+            envvar="CHZZK_TIME_FORMAT",
+            help="Time format string (strftime, e.g., '%%H:%%M:%%S')",
+        ),
+    ] = None,
 ) -> None:
     """Chzzk CLI - Unofficial CLI for Chzzk streaming platform."""
     ctx.ensure_object(dict)
@@ -95,6 +127,10 @@ def main(
     ctx.obj["log_level"] = effective_log_level
     ctx.obj["log_file"] = log_file
     ctx.obj["no_console_log"] = no_console_log
+    ctx.obj["chat_format"] = chat_format
+    ctx.obj["donation_format"] = donation_format
+    ctx.obj["sent_format"] = sent_format
+    ctx.obj["time_format"] = time_format
 
 
 if __name__ == "__main__":
