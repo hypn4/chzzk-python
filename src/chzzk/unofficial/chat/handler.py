@@ -118,7 +118,16 @@ class ChatHandler:
                     # Parse extras from JSON string if present
                     extras_str = item.get("extras")
                     if extras_str and isinstance(extras_str, str):
-                        item["extras"] = json.loads(extras_str)
+                        extras_data = json.loads(extras_str)
+                        item["extras"] = extras_data
+
+                        # Extract donation fields from extras (not top-level)
+                        if "payAmount" not in item and "payAmount" in extras_data:
+                            item["payAmount"] = extras_data["payAmount"]
+                        if "payType" not in item and "payType" in extras_data:
+                            item["payType"] = extras_data["payType"]
+                        if "donationType" not in item and "donationType" in extras_data:
+                            item["donationType"] = extras_data["donationType"]
 
                     messages.append(DonationMessage.model_validate(item))
                 except (json.JSONDecodeError, ValidationError, KeyError, TypeError) as e:
