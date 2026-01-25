@@ -50,7 +50,7 @@ class MonitorConfig:
 # Type aliases for callbacks
 StatusChangeCallback = Callable[[StatusChangeEvent], None]
 ReconnectCallback = Callable[[ReconnectEvent], None]
-ChatChannelChangeCallback = Callable[[str, str], None]
+ChatChannelChangeCallback = Callable[[str | None, str], None]
 
 
 @dataclass
@@ -207,6 +207,21 @@ class StatusMonitor:
                         callback(event)
                     except Exception as e:
                         logger.error("Error in on_live callback: %s", e)
+
+                # Stream restarted: trigger reconnection if we have a new chat channel ID
+                # This handles the case where old_chat_channel_id is None (stream was offline)
+                if new_chat_channel_id and old_chat_channel_id != new_chat_channel_id:
+                    logger.info(
+                        "Stream restarted with new chat channel: %s -> %s",
+                        old_chat_channel_id,
+                        new_chat_channel_id,
+                    )
+                    for change_callback in self._on_chat_channel_change_callbacks:
+                        try:
+                            change_callback(old_chat_channel_id, new_chat_channel_id)
+                        except Exception as e:
+                            logger.error("Error in on_chat_channel_change callback: %s", e)
+
             elif new_status == LiveStatus.CLOSE:
                 for callback in self._on_offline_callbacks:
                     try:
@@ -214,8 +229,9 @@ class StatusMonitor:
                     except Exception as e:
                         logger.error("Error in on_offline callback: %s", e)
 
-        # Check for chat channel ID change
-        if (
+        # Check for chat channel ID change during live broadcast
+        # (This handles the case where both old and new are non-null but different)
+        elif (
             old_chat_channel_id
             and new_chat_channel_id
             and old_chat_channel_id != new_chat_channel_id
@@ -264,7 +280,7 @@ class AsyncStatusMonitor:
         # Callbacks (can be sync or async)
         self._on_live_callbacks: list[Callable[[StatusChangeEvent], Any]] = []
         self._on_offline_callbacks: list[Callable[[StatusChangeEvent], Any]] = []
-        self._on_chat_channel_change_callbacks: list[Callable[[str, str], Any]] = []
+        self._on_chat_channel_change_callbacks: list[Callable[[str | None, str], Any]] = []
 
     @property
     def is_running(self) -> bool:
@@ -291,8 +307,8 @@ class AsyncStatusMonitor:
         return callback
 
     def on_chat_channel_change(
-        self, callback: Callable[[str, str], Any]
-    ) -> Callable[[str, str], Any]:
+        self, callback: Callable[[str | None, str], Any]
+    ) -> Callable[[str | None, str], Any]:
         """Register callback for when chatChannelId changes."""
         self._on_chat_channel_change_callbacks.append(callback)
         return callback
@@ -378,6 +394,23 @@ class AsyncStatusMonitor:
                             await result
                     except Exception as e:
                         logger.error("Error in on_live callback: %s", e)
+
+                # Stream restarted: trigger reconnection if we have a new chat channel ID
+                # This handles the case where old_chat_channel_id is None (stream was offline)
+                if new_chat_channel_id and old_chat_channel_id != new_chat_channel_id:
+                    logger.info(
+                        "Stream restarted with new chat channel: %s -> %s",
+                        old_chat_channel_id,
+                        new_chat_channel_id,
+                    )
+                    for change_callback in self._on_chat_channel_change_callbacks:
+                        try:
+                            result = change_callback(old_chat_channel_id, new_chat_channel_id)
+                            if hasattr(result, "__await__"):
+                                await result
+                        except Exception as e:
+                            logger.error("Error in on_chat_channel_change callback: %s", e)
+
             elif new_status == LiveStatus.CLOSE:
                 for callback in self._on_offline_callbacks:
                     try:
@@ -387,8 +420,9 @@ class AsyncStatusMonitor:
                     except Exception as e:
                         logger.error("Error in on_offline callback: %s", e)
 
-        # Check for chat channel ID change
-        if (
+        # Check for chat channel ID change during live broadcast
+        # (This handles the case where both old and new are non-null but different)
+        elif (
             old_chat_channel_id
             and new_chat_channel_id
             and old_chat_channel_id != new_chat_channel_id
