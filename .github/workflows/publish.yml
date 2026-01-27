@@ -1,8 +1,9 @@
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -36,8 +37,41 @@ jobs:
           name: dist
           path: dist/
 
-  publish-pypi:
+  release:
     needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: github
+          args: --latest --strip header
+        env:
+          OUTPUT: CHANGES.md
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGES.md
+          files: dist/*
+
+  publish-pypi:
+    needs: release
     runs-on: ubuntu-latest
     environment:
       name: pypi
