@@ -1,7 +1,8 @@
 # chzzk-python
 
-[![Python 3.14+](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://ghcr.io/hypn4/chzzk-python)
 
 치지직(CHZZK) 스트리밍 플랫폼을 위한 비공식 Python SDK
 
@@ -26,6 +27,31 @@ uv add "chzzk-python[cli]"
 # pip 사용
 pip install "chzzk-python[cli]"
 ```
+
+### Docker
+
+```bash
+# GitHub Container Registry에서 Pull
+docker pull ghcr.io/hypn4/chzzk-python:latest
+
+# CLI 명령어 실행
+docker run --rm ghcr.io/hypn4/chzzk-python --help
+docker run --rm ghcr.io/hypn4/chzzk-python auth --help
+
+# 채팅 보기 (환경 변수 사용)
+docker run --rm -it \
+  -e CHZZK_NID_AUT="your-nid-aut" \
+  -e CHZZK_NID_SES="your-nid-ses" \
+  ghcr.io/hypn4/chzzk-python chat watch CHANNEL_ID
+
+# 대화형 채팅 (-it 플래그 필요)
+docker run --rm -it \
+  -e CHZZK_NID_AUT="your-nid-aut" \
+  -e CHZZK_NID_SES="your-nid-ses" \
+  ghcr.io/hypn4/chzzk-python chat send CHANNEL_ID -i
+```
+
+사용 가능한 태그: `latest`, `X.Y.Z`, `X.Y`, `X`
 
 ## 빠른 시작
 

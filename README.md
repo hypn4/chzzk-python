@@ -2,6 +2,7 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://ghcr.io/hypn4/chzzk-python)
 
 Unofficial Python SDK for Chzzk (NAVER Live Streaming Platform) API
 
@@ -26,6 +27,31 @@ uv add "chzzk-python[cli]"
 # Using pip
 pip install "chzzk-python[cli]"
 ```
+
+### Docker
+
+```bash
+# Pull from GitHub Container Registry
+docker pull ghcr.io/hypn4/chzzk-python:latest
+
+# Run CLI commands
+docker run --rm ghcr.io/hypn4/chzzk-python --help
+docker run --rm ghcr.io/hypn4/chzzk-python auth --help
+
+# Watch chat (with environment variables)
+docker run --rm -it \
+  -e CHZZK_NID_AUT="your-nid-aut" \
+  -e CHZZK_NID_SES="your-nid-ses" \
+  ghcr.io/hypn4/chzzk-python chat watch CHANNEL_ID
+
+# Interactive chat (requires -it flags)
+docker run --rm -it \
+  -e CHZZK_NID_AUT="your-nid-aut" \
+  -e CHZZK_NID_SES="your-nid-ses" \
+  ghcr.io/hypn4/chzzk-python chat send CHANNEL_ID -i
+```
+
+Available tags: `latest`, `X.Y.Z`, `X.Y`, `X`
 
 ## Quick Start
 
