@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from rich.markup import escape
-from rich.text import Text
 
 if TYPE_CHECKING:
     from chzzk.unofficial import ChatMessage, ChatProfile, DonationMessage
@@ -279,18 +278,6 @@ class ChatFormatter:
             role=self._get_role_str(msg.profile),
         )
 
-    def format_chat_text(self, msg: ChatMessage) -> Text:
-        """Format a chat message as Rich Text for TUI.
-
-        Args:
-            msg: Chat message to format.
-
-        Returns:
-            Rich Text object with styling.
-        """
-        markup = self.format_chat(msg)
-        return Text.from_markup(markup)
-
     def format_donation(self, msg: DonationMessage) -> str:
         """Format a donation message for console display.
 
@@ -314,18 +301,6 @@ class ChatFormatter:
             continuous_days=self._get_continuous_days_str(msg.extras),
         )
 
-    def format_donation_text(self, msg: DonationMessage) -> Text:
-        """Format a donation message as Rich Text for TUI.
-
-        Args:
-            msg: Donation message to format.
-
-        Returns:
-            Rich Text object with styling.
-        """
-        markup = self.format_donation(msg)
-        return Text.from_markup(markup)
-
     def format_sent(self, content: str) -> str:
         """Format a sent message for console display.
 
@@ -339,18 +314,6 @@ class ChatFormatter:
             time=self._get_timestamp(),
             msg=self._escape_markup(content),
         )
-
-    def format_sent_text(self, content: str) -> Text:
-        """Format a sent message as Rich Text for TUI.
-
-        Args:
-            content: Message content that was sent.
-
-        Returns:
-            Rich Text object with styling.
-        """
-        markup = self.format_sent(content)
-        return Text.from_markup(markup)
 
     def format_system(self, content: str, style: str = "yellow") -> str:
         """Format a system message for console display.
@@ -367,16 +330,3 @@ class ChatFormatter:
             msg=self._escape_markup(content),
             style=style,
         )
-
-    def format_system_text(self, content: str, style: str = "yellow") -> Text:
-        """Format a system message as Rich Text for TUI.
-
-        Args:
-            content: System message content.
-            style: Rich style name for the message.
-
-        Returns:
-            Rich Text object with styling.
-        """
-        markup = self.format_system(content, style)
-        return Text.from_markup(markup)
