@@ -39,6 +39,8 @@ x-chat-watch-base: &chat-watch-base
   profiles:
     - chat
   environment:
+    - TZ=${TZ:-Asia/Seoul}
+    - CHZZK_TIMEZONE=${CHZZK_TIMEZONE:-Asia/Seoul}
     - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
     - CHZZK_NID_SES=${CHZZK_NID_SES:-}
     - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
@@ -55,6 +57,8 @@ services:
     stdin_open: true
     tty: true
     environment:
+      - TZ=${TZ:-Asia/Seoul}
+      - CHZZK_TIMEZONE=${CHZZK_TIMEZONE:-Asia/Seoul}
       - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
       - CHZZK_NID_SES=${CHZZK_NID_SES:-}
       - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
@@ -117,6 +121,8 @@ services:
     stdin_open: true
     tty: true
     environment:
+      - TZ=${TZ:-Asia/Seoul}
+      - CHZZK_TIMEZONE=${CHZZK_TIMEZONE:-Asia/Seoul}
       - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
       - CHZZK_NID_SES=${CHZZK_NID_SES:-}
       - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
