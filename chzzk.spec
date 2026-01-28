@@ -64,23 +64,19 @@ if tcss_path.exists():
     datas.append((str(tcss_path), "chzzk/cli/tui/styles"))
 
 # Excluded modules to reduce binary size
+# Note: Be careful not to exclude modules required by dependencies
+# - pickle: Required by multiprocessing (used by prompt_toolkit)
+# - email: Required by pkg_resources
+# - inspect: Required by many packages for introspection
 excludes = [
     "tkinter",
     "_tkinter",
     "unittest",
-    "email",
-    "xml",
     "pydoc",
     "doctest",
-    "argparse",
-    "difflib",
-    "inspect",
     "pdb",
     "profile",
     "pstats",
-    "calendar",
-    "gettext",
-    # "pickle",  # Required by multiprocessing (used by prompt_toolkit)
     "PIL",
     "numpy",
     "pandas",
