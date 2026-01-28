@@ -80,7 +80,7 @@ excludes = [
     "pstats",
     "calendar",
     "gettext",
-    "pickle",
+    # "pickle",  # Required by multiprocessing (used by prompt_toolkit)
     "PIL",
     "numpy",
     "pandas",
