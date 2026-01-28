@@ -42,5 +42,7 @@ htmlcov/
 CLAUDE.md
 .claude/
 
+chat_logs/
 *.log
 *.txt
+*.jsonl
