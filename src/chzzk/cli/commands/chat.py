@@ -131,6 +131,22 @@ def watch(
             help="Directory to save chat logs (auto-generates filename based on stream info)",
         ),
     ] = None,
+    poll_interval: Annotated[
+        float,
+        typer.Option(
+            "--poll-interval",
+            envvar="CHZZK_POLL_INTERVAL",
+            help="Interval for polling live status in seconds (default: 10)",
+        ),
+    ] = 10.0,
+    auto_reconnect: Annotated[
+        bool,
+        typer.Option(
+            "--auto-reconnect/--no-auto-reconnect",
+            envvar="CHZZK_AUTO_RECONNECT",
+            help="Enable/disable automatic reconnection when stream restarts",
+        ),
+    ] = True,
 ) -> None:
     """Watch real-time chat messages from a channel.
 
@@ -174,6 +190,8 @@ def watch(
             format_config=format_config,
             output_dir=output_dir,
             output_format=OutputFormat(output_format),
+            poll_interval=poll_interval,
+            auto_reconnect=auto_reconnect,
         )
     finally:
         if writer:
@@ -191,6 +209,8 @@ def _run_watch_console(
     format_config: FormatConfig | None = None,
     output_dir: Path | None = None,
     output_format: OutputFormat = OutputFormat.JSONL,
+    poll_interval: float = 10.0,
+    auto_reconnect: bool = True,
 ) -> None:
     """Run chat watch with console output (fallback mode)."""
     formatter = ChatFormatter(format_config)
@@ -199,7 +219,10 @@ def _run_watch_console(
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
-            chat = client.create_chat_client()
+            chat = client.create_chat_client(
+                auto_reconnect=auto_reconnect,
+                poll_interval=poll_interval,
+            )
 
             @chat.on_chat
             async def handle_chat(msg: ChatMessage) -> None:
@@ -435,6 +458,22 @@ def send(
             help="Directory to save chat logs (interactive mode only, auto-generates filename)",
         ),
     ] = None,
+    poll_interval: Annotated[
+        float,
+        typer.Option(
+            "--poll-interval",
+            envvar="CHZZK_POLL_INTERVAL",
+            help="Interval for polling live status in seconds (default: 10)",
+        ),
+    ] = 10.0,
+    auto_reconnect: Annotated[
+        bool,
+        typer.Option(
+            "--auto-reconnect/--no-auto-reconnect",
+            envvar="CHZZK_AUTO_RECONNECT",
+            help="Enable/disable automatic reconnection when stream restarts",
+        ),
+    ] = True,
 ) -> None:
     """Send a chat message to a channel.
 
@@ -516,6 +555,8 @@ def send(
                 format_config=format_config,
                 output_dir=output_dir,
                 output_format=OutputFormat(output_format),
+                poll_interval=poll_interval,
+                auto_reconnect=auto_reconnect,
             )
         else:
             # message is guaranteed to be non-None here (checked above)
@@ -601,6 +642,8 @@ def _run_interactive_chat_console(
     format_config: FormatConfig | None = None,
     output_dir: Path | None = None,
     output_format: OutputFormat = OutputFormat.JSONL,
+    poll_interval: float = 10.0,
+    auto_reconnect: bool = True,
 ) -> None:
     """Run interactive chat with console input/output.
 
@@ -612,7 +655,10 @@ def _run_interactive_chat_console(
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
-            chat = client.create_chat_client()
+            chat = client.create_chat_client(
+                auto_reconnect=auto_reconnect,
+                poll_interval=poll_interval,
+            )
 
             @chat.on_chat
             async def handle_chat(msg: ChatMessage) -> None:
