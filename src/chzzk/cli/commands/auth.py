@@ -9,9 +9,6 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
-from chzzk.cli.tui import can_run_tui, run_tui
-from chzzk.cli.tui.apps import LoginApp
-
 if TYPE_CHECKING:
     from chzzk.cli.config import ConfigManager
 
@@ -55,13 +52,6 @@ def login(
             help="NID_SES cookie value from Naver login",
         ),
     ] = None,
-    no_tui: Annotated[
-        bool,
-        typer.Option(
-            "--no-tui",
-            help="Disable TUI and use simple prompts",
-        ),
-    ] = False,
 ) -> None:
     """Save Naver authentication cookies.
 
@@ -69,14 +59,11 @@ def login(
     1. Open browser DevTools (F12)
     2. Go to Application > Cookies > naver.com
     3. Find NID_AUT and NID_SES values
-
-    By default, opens an interactive TUI for entering cookies.
-    Use --no-tui to use simple prompts instead.
     """
     config = get_config(ctx)
     json_output = ctx.obj.get("json_output", False)
 
-    # If both values provided via CLI, skip TUI/prompts
+    # If both values provided via CLI, skip prompts
     if nid_aut and nid_ses:
         config.save_cookies(nid_aut, nid_ses)
         if json_output:
@@ -91,32 +78,7 @@ def login(
             )
         return
 
-    # Try TUI if available and not disabled
-    if not json_output and not no_tui and can_run_tui():
-        login_app = LoginApp(config=config, nid_aut=nid_aut, nid_ses=nid_ses)
-        run_tui(login_app)
-
-        if login_app.result.cancelled:
-            console.print("[yellow]Login cancelled[/yellow]")
-            raise typer.Exit(0)
-
-        if login_app.result.success:
-            if json_output:
-                console.print(json.dumps({"status": "success", "message": "Cookies saved"}))
-            else:
-                console.print(
-                    Panel(
-                        f"Cookies saved to [cyan]{config.config_dir}[/cyan]",
-                        title="[green]Login successful[/green]",
-                        border_style="green",
-                    )
-                )
-        else:
-            console.print("[red]Login failed[/red]")
-            raise typer.Exit(1)
-        return
-
-    # Fallback to simple prompts
+    # Use simple prompts
     try:
         final_nid_aut, final_nid_ses = _prompt_login_fallback(config)
     except (KeyboardInterrupt, EOFError):
