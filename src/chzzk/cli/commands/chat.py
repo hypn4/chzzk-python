@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
 
 from chzzk.cli.formatter import ChatFormatter, FormatConfig
@@ -685,9 +687,11 @@ def _run_interactive_chat_console(
 
             # Input loop for sending messages
             async def input_loop() -> None:
+                session: PromptSession[str] = PromptSession()
                 while not stop_event.is_set():
                     try:
-                        line = await asyncio.to_thread(input)
+                        with patch_stdout(raw=True):
+                            line = await session.prompt_async("")
                         if line and not stop_event.is_set():
                             await chat.send_message(line)
                             if json_output:
@@ -696,11 +700,13 @@ def _run_interactive_chat_console(
                                 console.print(formatter.format_sent(line))
                             if writer:
                                 writer.write_sent(line)
-                    except EOFError:
-                        # stdin closed
+                    except (EOFError, KeyboardInterrupt):
+                        # prompt_toolkit catches SIGINT and raises KeyboardInterrupt
+                        # We need to trigger shutdown here as well
+                        stop_event.set()
+                        chat.stop()
                         break
-                    except Exception:
-                        # Input interrupted (likely by signal)
+                    except asyncio.CancelledError:
                         break
 
             input_task = asyncio.create_task(input_loop())
@@ -711,9 +717,8 @@ def _run_interactive_chat_console(
                 pass
             finally:
                 input_task.cancel()
-                # Use timeout to avoid blocking on the uncancellable input() thread
-                with contextlib.suppress(asyncio.CancelledError, TimeoutError):
-                    await asyncio.wait_for(input_task, timeout=0.1)
+                with contextlib.suppress(asyncio.CancelledError):
+                    await input_task
                 if not json_output:
                     console.print("\n[yellow]Disconnected[/yellow]")
 
