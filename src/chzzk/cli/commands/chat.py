@@ -17,7 +17,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
 
 from chzzk.cli.formatter import ChatFormatter, FormatConfig
-from chzzk.cli.writers import ChatWriter, OutputFormat, create_writer
+from chzzk.cli.writers import ChatWriter, OutputFormat, create_writer, generate_chat_log_filename
 from chzzk.constants import StatusText
 from chzzk.exceptions import ChatConnectionError, ChatNotLiveError
 from chzzk.unofficial import (
@@ -122,6 +122,15 @@ def watch(
             help="Output format: jsonl, txt (default: jsonl)",
         ),
     ] = "jsonl",
+    output_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--output-dir",
+            "-d",
+            envvar="CHZZK_CHAT_OUTPUT_DIR",
+            help="Directory to save chat logs (auto-generates filename based on stream info)",
+        ),
+    ] = None,
 ) -> None:
     """Watch real-time chat messages from a channel.
 
@@ -129,12 +138,20 @@ def watch(
     Use --offline to connect to chat even when offline.
 
     Use --output to save messages to a file while watching.
+    Use --output-dir to auto-generate filename based on stream info.
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
     format_config = get_format_config(ctx)
 
-    # Create writer if output path specified
+    # Validate mutually exclusive options
+    if output and output_dir:
+        console.print(
+            "[red]Error:[/red] --output and --output-dir are mutually exclusive. Use only one."
+        )
+        raise typer.Exit(1)
+
+    # Create writer if output path specified (output_dir is handled inside _run_watch_console)
     writer: ChatWriter | None = None
     if output:
         try:
@@ -155,6 +172,8 @@ def watch(
             json_output=json_output,
             writer=writer,
             format_config=format_config,
+            output_dir=output_dir,
+            output_format=OutputFormat(output_format),
         )
     finally:
         if writer:
@@ -170,9 +189,13 @@ def _run_watch_console(
     json_output: bool,
     writer: ChatWriter | None = None,
     format_config: FormatConfig | None = None,
+    output_dir: Path | None = None,
+    output_format: OutputFormat = OutputFormat.JSONL,
 ) -> None:
     """Run chat watch with console output (fallback mode)."""
     formatter = ChatFormatter(format_config)
+    # Track writer created from output_dir (needs to be closed on exit)
+    output_dir_writer: ChatWriter | None = None
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
@@ -269,6 +292,26 @@ def _run_watch_console(
                     console.print(f"[red]Error:[/red] {e}")
                 raise typer.Exit(1) from None
 
+            # Create writer from output_dir if specified (after getting live_detail)
+            nonlocal writer, output_dir_writer
+            if output_dir and not writer:
+                try:
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    output_path = generate_chat_log_filename(
+                        output_dir=output_dir,
+                        channel_id=channel_id,
+                        live_id=live_detail.live_id,
+                        open_date=live_detail.open_date,
+                        format=output_format,
+                    )
+                    output_dir_writer = create_writer(output_path, output_format)
+                    writer = output_dir_writer
+                    if not json_output:
+                        console.print(f"[dim]Saving chat to: {output_path}[/dim]")
+                except OSError as e:
+                    console.print(f"[red]Error:[/red] Cannot write to {output_dir}: {e}")
+                    raise typer.Exit(1) from None
+
             # Connect to chat
             try:
                 if not json_output:
@@ -332,8 +375,12 @@ def _run_watch_console(
                 if not json_output:
                     console.print("\n[yellow]Disconnected[/yellow]")
 
-    with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(run_chat())
+    try:
+        with contextlib.suppress(KeyboardInterrupt):
+            asyncio.run(run_chat())
+    finally:
+        if output_dir_writer:
+            output_dir_writer.close()
 
 
 @app.command()
@@ -379,6 +426,15 @@ def send(
             help="Output format: jsonl, txt (default: jsonl)",
         ),
     ] = "jsonl",
+    output_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--output-dir",
+            "-d",
+            envvar="CHZZK_CHAT_OUTPUT_DIR",
+            help="Directory to save chat logs (interactive mode only, auto-generates filename)",
+        ),
+    ] = None,
 ) -> None:
     """Send a chat message to a channel.
 
@@ -389,6 +445,7 @@ def send(
     Use --offline to connect even when the channel is offline.
 
     Use --output to save messages to a file (interactive mode only).
+    Use --output-dir to auto-generate filename based on stream info (interactive mode only).
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
@@ -415,13 +472,27 @@ def send(
             )
         raise typer.Exit(1)
 
-    # Warn if output is specified in non-interactive mode
+    # Validate mutually exclusive options
+    if output and output_dir:
+        console.print(
+            "[red]Error:[/red] --output and --output-dir are mutually exclusive. Use only one."
+        )
+        raise typer.Exit(1)
+
+    # Warn if output/output_dir is specified in non-interactive mode
     if output and not interactive:
         if not json_output:
             console.print("[yellow]Warning:[/yellow] --output is ignored in non-interactive mode.")
         output = None
+    if output_dir and not interactive:
+        if not json_output:
+            console.print(
+                "[yellow]Warning:[/yellow] --output-dir is ignored in non-interactive mode."
+            )
+        output_dir = None
 
     # Create writer if output path specified (interactive mode only)
+    # output_dir is handled inside _run_interactive_chat_console
     writer: ChatWriter | None = None
     if output:
         try:
@@ -443,6 +514,8 @@ def send(
                 json_output=json_output,
                 writer=writer,
                 format_config=format_config,
+                output_dir=output_dir,
+                output_format=OutputFormat(output_format),
             )
         else:
             # message is guaranteed to be non-None here (checked above)
@@ -526,12 +599,16 @@ def _run_interactive_chat_console(
     json_output: bool,
     writer: ChatWriter | None = None,
     format_config: FormatConfig | None = None,
+    output_dir: Path | None = None,
+    output_format: OutputFormat = OutputFormat.JSONL,
 ) -> None:
     """Run interactive chat with console input/output.
 
     Uses async stdin reading with chat message display.
     """
     formatter = ChatFormatter(format_config)
+    # Track writer created from output_dir (needs to be closed on exit)
+    output_dir_writer: ChatWriter | None = None
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
@@ -628,6 +705,26 @@ def _run_interactive_chat_console(
                     console.print(f"[red]Error:[/red] {e}")
                 raise typer.Exit(1) from None
 
+            # Create writer from output_dir if specified (after getting live_detail)
+            nonlocal writer, output_dir_writer
+            if output_dir and not writer:
+                try:
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    output_path = generate_chat_log_filename(
+                        output_dir=output_dir,
+                        channel_id=channel_id,
+                        live_id=live_detail.live_id,
+                        open_date=live_detail.open_date,
+                        format=output_format,
+                    )
+                    output_dir_writer = create_writer(output_path, output_format)
+                    writer = output_dir_writer
+                    if not json_output:
+                        console.print(f"[dim]Saving chat to: {output_path}[/dim]")
+                except OSError as e:
+                    console.print(f"[red]Error:[/red] Cannot write to {output_dir}: {e}")
+                    raise typer.Exit(1) from None
+
             # Connect to chat
             try:
                 if not json_output:
@@ -722,5 +819,9 @@ def _run_interactive_chat_console(
                 if not json_output:
                     console.print("\n[yellow]Disconnected[/yellow]")
 
-    with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(run_chat())
+    try:
+        with contextlib.suppress(KeyboardInterrupt):
+            asyncio.run(run_chat())
+    finally:
+        if output_dir_writer:
+            output_dir_writer.close()
