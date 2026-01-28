@@ -334,6 +334,7 @@ class TestConsecutiveFailures:
         # Run the monitor for a short time
         monitor.start()
         import time
+
         time.sleep(0.1)
         monitor.stop()
 
@@ -358,6 +359,7 @@ class TestConsecutiveFailures:
 
         monitor.start()
         import time
+
         time.sleep(0.1)
 
         # Monitor should have stopped itself
@@ -387,6 +389,7 @@ class TestConsecutiveFailures:
 
         monitor.start()
         import time
+
         time.sleep(0.15)
         monitor.stop()
 
@@ -419,6 +422,7 @@ class TestConsecutiveFailures:
 
         monitor.start()
         import time
+
         time.sleep(0.1)
         monitor.stop()
 
