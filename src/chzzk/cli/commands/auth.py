@@ -517,9 +517,7 @@ async def _qr_login(ctx: typer.Context, timeout: int) -> None:
 
             if not login_success:
                 if json_output:
-                    console.print(
-                        json.dumps({"status": "error", "message": "Login timeout"})
-                    )
+                    console.print(json.dumps({"status": "error", "message": "Login timeout"}))
                 else:
                     console.print("\n[red]타임아웃: 로그인 시간이 초과되었습니다.[/red]")
                     console.print("[dim]다시 시도하려면 chzzk auth qr를 실행하세요.[/dim]")
