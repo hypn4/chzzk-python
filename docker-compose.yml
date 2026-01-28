@@ -4,7 +4,7 @@
 #
 # Setup:
 #   cp .env.example .env
-#   # Edit .env with your CHZZK_CHANNEL_ID
+#   # Edit .env with your CHZZK_CHANNEL_ID_1, CHZZK_CHANNEL_ID_2, ...
 #
 # Usage:
 #   # QR 로그인으로 쿠키 저장 (최초 1회)
@@ -20,14 +20,32 @@
 #   docker compose run --rm chzzk live info CHANNEL_ID
 #
 #   # 채팅 모니터링 (백그라운드)
-#   docker compose --profile chat up -d chat-watch
-#   docker compose --profile chat logs -f chat-watch
+#   # .env에 CHZZK_CHANNEL_ID_1, CHZZK_CHANNEL_ID_2, ... 설정 후:
+#   docker compose --profile chat up -d
+#   docker compose --profile chat logs -f
 #   docker compose --profile chat down
+#   # 특정 채널만 실행:
+#   docker compose --profile chat up -d chat-watch-1
 #
 #   # 대화형 채팅
 #   docker compose --profile interactive run --rm chat-interactive
 #
 # =============================================================================
+
+# YAML Anchor: 채팅 모니터링 서비스 공통 설정
+x-chat-watch-base: &chat-watch-base
+  image: ghcr.io/hypn4/chzzk-python:latest
+  restart: unless-stopped
+  profiles:
+    - chat
+  environment:
+    - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
+    - CHZZK_NID_SES=${CHZZK_NID_SES:-}
+    - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
+    - CHZZK_POLL_INTERVAL=${CHZZK_POLL_INTERVAL:-10}
+  volumes:
+    - ./.logs:/home/chzzk/logs
+    - ./.chzzk:/home/chzzk/.chzzk
 
 services:
   chzzk:
@@ -51,25 +69,39 @@ services:
     # command: ["chat", "watch", "CHANNEL_ID", "--output-dir", "/home/chzzk/logs"]
     # command: ["live", "info", "CHANNEL_ID"]
 
-  # Example: Watch chat and save to logs
-  chat-watch:
-    image: ghcr.io/hypn4/chzzk-python:latest
-    container_name: chzzk-chat-watch
-    restart: unless-stopped
-    profiles:
-      - chat
-    environment:
-      - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
-      - CHZZK_NID_SES=${CHZZK_NID_SES:-}
-      - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
-      - CHZZK_POLL_INTERVAL=${CHZZK_POLL_INTERVAL:-10}
-    volumes:
-      - ./.logs:/home/chzzk/logs
-      # - ./.chzzk:/home/chzzk/.chzzk
+  # Multi-channel chat monitoring (uses x-chat-watch-base anchor)
+  # 각 서비스는 CHZZK_CHANNEL_ID_N 환경변수를 사용하여 채널 지정
+  chat-watch-1:
+    <<: *chat-watch-base
+    container_name: chzzk-chat-watch-1
     command:
       - chat
       - watch
-      - ${CHZZK_CHANNEL_ID:-}
+      - ${CHZZK_CHANNEL_ID_1:-}
+      - --output-dir
+      - /home/chzzk/logs
+      - --offline
+      - --auto-reconnect
+
+  chat-watch-2:
+    <<: *chat-watch-base
+    container_name: chzzk-chat-watch-2
+    command:
+      - chat
+      - watch
+      - ${CHZZK_CHANNEL_ID_2:-}
+      - --output-dir
+      - /home/chzzk/logs
+      - --offline
+      - --auto-reconnect
+
+  chat-watch-3:
+    <<: *chat-watch-base
+    container_name: chzzk-chat-watch-3
+    command:
+      - chat
+      - watch
+      - ${CHZZK_CHANNEL_ID_3:-}
       - --output-dir
       - /home/chzzk/logs
       - --offline
