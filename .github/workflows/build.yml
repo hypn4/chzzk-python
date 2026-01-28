@@ -1,0 +1,85 @@
+name: Build Executables
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: chzzk-linux
+          - os: windows-latest
+            artifact_name: chzzk-windows.exe
+          - os: macos-latest
+            artifact_name: chzzk-macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --dev --all-extras
+
+      - name: Build executable
+        run: uv run python -m PyInstaller chzzk.spec --clean
+
+      - name: Verify executable (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x dist/${{ matrix.artifact_name }}
+          dist/${{ matrix.artifact_name }} --help
+
+      - name: Verify executable (Windows)
+        if: runner.os == 'Windows'
+        run: dist/${{ matrix.artifact_name }} --help
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          cp artifacts/chzzk-linux/chzzk-linux release/
+          cp artifacts/chzzk-windows.exe/chzzk-windows.exe release/
+          cp artifacts/chzzk-macos/chzzk-macos release/
+          chmod +x release/chzzk-linux release/chzzk-macos
+
+      - name: Add executables to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
