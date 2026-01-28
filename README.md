@@ -380,6 +380,14 @@ chzzk chat watch CHANNEL_ID
 # Watch chat even when offline
 chzzk chat watch CHANNEL_ID --offline
 
+# Save chat to file
+chzzk chat watch CHANNEL_ID --output chat.jsonl
+chzzk chat watch CHANNEL_ID --output chat.txt --output-format txt
+
+# Auto-generate filename based on stream info (recommended)
+# Creates: {channel_id}_{live_id}_{YYYYMMDD}.jsonl
+chzzk chat watch CHANNEL_ID --output-dir ./logs
+
 # Send a single message (requires authentication)
 chzzk chat send CHANNEL_ID "Hello!"
 
@@ -390,6 +398,9 @@ chzzk chat send CHANNEL_ID "Hello!" --offline
 chzzk chat send CHANNEL_ID --interactive
 # or
 chzzk chat send CHANNEL_ID -i
+
+# Interactive mode with chat logging
+chzzk chat send CHANNEL_ID -i --output-dir ./logs
 
 # Interactive mode with offline channel
 chzzk chat send CHANNEL_ID -i --offline
@@ -411,6 +422,9 @@ chzzk chat send CHANNEL_ID -i --offline
 | `CHZZK_NID_AUT` | NID_AUT cookie value |
 | `CHZZK_NID_SES` | NID_SES cookie value |
 | `CHZZK_LOG_LEVEL` | Default log level |
+| `CHZZK_CHAT_OUTPUT` | Default chat output file path |
+| `CHZZK_CHAT_OUTPUT_DIR` | Default chat output directory (auto-generates filename) |
+| `CHZZK_CHAT_OUTPUT_FORMAT` | Default chat output format (jsonl, txt) |
 
 ## Examples
 

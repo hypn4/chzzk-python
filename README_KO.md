@@ -380,6 +380,14 @@ chzzk chat watch CHANNEL_ID
 # 오프라인 상태에서도 채팅 보기
 chzzk chat watch CHANNEL_ID --offline
 
+# 채팅을 파일로 저장
+chzzk chat watch CHANNEL_ID --output chat.jsonl
+chzzk chat watch CHANNEL_ID --output chat.txt --output-format txt
+
+# 방송 정보 기반 자동 파일명 생성 (권장)
+# 생성 형식: {channel_id}_{live_id}_{YYYYMMDD}.jsonl
+chzzk chat watch CHANNEL_ID --output-dir ./logs
+
 # 단일 메시지 전송 (인증 필요)
 chzzk chat send CHANNEL_ID "안녕하세요!"
 
@@ -390,6 +398,9 @@ chzzk chat send CHANNEL_ID "안녕하세요!" --offline
 chzzk chat send CHANNEL_ID --interactive
 # 또는
 chzzk chat send CHANNEL_ID -i
+
+# 대화형 모드에서 채팅 로그 저장
+chzzk chat send CHANNEL_ID -i --output-dir ./logs
 
 # 오프라인 채널에서 대화형 모드
 chzzk chat send CHANNEL_ID -i --offline
@@ -411,6 +422,9 @@ chzzk chat send CHANNEL_ID -i --offline
 | `CHZZK_NID_AUT` | NID_AUT 쿠키 값 |
 | `CHZZK_NID_SES` | NID_SES 쿠키 값 |
 | `CHZZK_LOG_LEVEL` | 기본 로그 레벨 |
+| `CHZZK_CHAT_OUTPUT` | 기본 채팅 출력 파일 경로 |
+| `CHZZK_CHAT_OUTPUT_DIR` | 기본 채팅 출력 디렉토리 (파일명 자동 생성) |
+| `CHZZK_CHAT_OUTPUT_FORMAT` | 기본 채팅 출력 형식 (jsonl, txt) |
 
 ## 예제 코드
 
