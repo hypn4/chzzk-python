@@ -320,6 +320,56 @@ async with AsyncUnofficialChatClient(
     await chat.run_forever()
 ```
 
+### Auto-Reconnection & Monitoring Options
+
+The unofficial chat client automatically reconnects when the stream restarts or the chat channel changes. You can customize this behavior:
+
+```python
+from chzzk.unofficial import AsyncUnofficialChatClient
+
+chat = AsyncUnofficialChatClient(
+    nid_aut="...",
+    nid_ses="...",
+    # Auto-reconnect settings
+    auto_reconnect=True,              # Enable auto-reconnection (default: True)
+    poll_interval=10.0,               # Status polling interval in seconds (default: 10)
+    max_reconnect_attempts=5,         # Max reconnection attempts (default: 5)
+    reconnect_backoff_base=1.0,       # Backoff base delay in seconds (default: 1)
+    reconnect_backoff_max=30.0,       # Max backoff delay in seconds (default: 30)
+    reconnect_wait_timeout=None,      # Reconnection wait timeout (None = infinite)
+)
+
+# Event handlers for connection status
+@chat.on_live
+async def on_live(event):
+    print(f"Stream started: {event.live_title}")
+
+@chat.on_offline
+async def on_offline(event):
+    print("Stream ended, waiting for restart...")
+
+@chat.on_reconnect
+async def on_reconnect(event):
+    print(f"Reconnected! (attempt {event.attempt})")
+
+@chat.on_reconnect_error
+async def on_reconnect_error(error):
+    print(f"Reconnection failed: {error}")
+```
+
+For long-running monitoring applications, you can configure infinite retry behavior:
+
+```python
+from chzzk.unofficial.chat.monitor import MonitorConfig
+
+# Create a custom monitor config
+config = MonitorConfig(
+    poll_interval_seconds=10.0,       # Poll every 10 seconds
+    max_consecutive_failures=10,      # Trigger error callback after 10 failures
+    infinite_retry=True,              # Continue monitoring even after failures
+)
+```
+
 ### How to Get Naver Cookies
 
 1. Log in to Naver
@@ -394,6 +444,12 @@ chzzk chat watch CHANNEL_ID --output chat.txt --output-format txt
 # Creates: {channel_id}_{live_id}_{YYYYMMDD}.jsonl
 chzzk chat watch CHANNEL_ID --output-dir ./logs
 
+# Disable auto-reconnection
+chzzk chat watch CHANNEL_ID --no-auto-reconnect
+
+# Custom poll interval (seconds)
+chzzk chat watch CHANNEL_ID --poll-interval 5
+
 # Send a single message (requires authentication)
 chzzk chat send CHANNEL_ID "Hello!"
 
@@ -431,6 +487,8 @@ chzzk chat send CHANNEL_ID -i --offline
 | `CHZZK_CHAT_OUTPUT` | Default chat output file path |
 | `CHZZK_CHAT_OUTPUT_DIR` | Default chat output directory (auto-generates filename) |
 | `CHZZK_CHAT_OUTPUT_FORMAT` | Default chat output format (jsonl, txt) |
+| `CHZZK_POLL_INTERVAL` | Live status polling interval in seconds (default: 10) |
+| `CHZZK_AUTO_RECONNECT` | Enable auto-reconnection (default: true, set "false" to disable) |
 
 ## Examples
 

@@ -320,6 +320,56 @@ async with AsyncUnofficialChatClient(
     await chat.run_forever()
 ```
 
+### 자동 재연결 및 모니터링 옵션
+
+비공식 채팅 클라이언트는 방송이 재시작되거나 채팅 채널이 변경될 때 자동으로 재연결됩니다. 이 동작을 커스터마이즈할 수 있습니다:
+
+```python
+from chzzk.unofficial import AsyncUnofficialChatClient
+
+chat = AsyncUnofficialChatClient(
+    nid_aut="...",
+    nid_ses="...",
+    # 자동 재연결 설정
+    auto_reconnect=True,              # 자동 재연결 활성화 (기본값: True)
+    poll_interval=10.0,               # 상태 폴링 간격 (초, 기본값: 10)
+    max_reconnect_attempts=5,         # 최대 재연결 시도 횟수 (기본값: 5)
+    reconnect_backoff_base=1.0,       # 백오프 기본 딜레이 (초, 기본값: 1)
+    reconnect_backoff_max=30.0,       # 최대 백오프 딜레이 (초, 기본값: 30)
+    reconnect_wait_timeout=None,      # 재연결 대기 타임아웃 (None = 무한 대기)
+)
+
+# 연결 상태 이벤트 핸들러
+@chat.on_live
+async def on_live(event):
+    print(f"방송 시작: {event.live_title}")
+
+@chat.on_offline
+async def on_offline(event):
+    print("방송 종료, 재시작 대기 중...")
+
+@chat.on_reconnect
+async def on_reconnect(event):
+    print(f"재연결 성공! (시도 {event.attempt}회)")
+
+@chat.on_reconnect_error
+async def on_reconnect_error(error):
+    print(f"재연결 실패: {error}")
+```
+
+장시간 모니터링 애플리케이션의 경우 무한 재시도 동작을 설정할 수 있습니다:
+
+```python
+from chzzk.unofficial.chat.monitor import MonitorConfig
+
+# 커스텀 모니터 설정 생성
+config = MonitorConfig(
+    poll_interval_seconds=10.0,       # 10초마다 폴링
+    max_consecutive_failures=10,      # 10회 연속 실패 후 에러 콜백 호출
+    infinite_retry=True,              # 실패 후에도 계속 모니터링
+)
+```
+
 ### 네이버 쿠키 획득 방법
 
 1. 네이버에 로그인
@@ -394,6 +444,12 @@ chzzk chat watch CHANNEL_ID --output chat.txt --output-format txt
 # 생성 형식: {channel_id}_{live_id}_{YYYYMMDD}.jsonl
 chzzk chat watch CHANNEL_ID --output-dir ./logs
 
+# 자동 재연결 비활성화
+chzzk chat watch CHANNEL_ID --no-auto-reconnect
+
+# 커스텀 폴링 간격 (초)
+chzzk chat watch CHANNEL_ID --poll-interval 5
+
 # 단일 메시지 전송 (인증 필요)
 chzzk chat send CHANNEL_ID "안녕하세요!"
 
@@ -431,6 +487,8 @@ chzzk chat send CHANNEL_ID -i --offline
 | `CHZZK_CHAT_OUTPUT` | 기본 채팅 출력 파일 경로 |
 | `CHZZK_CHAT_OUTPUT_DIR` | 기본 채팅 출력 디렉토리 (파일명 자동 생성) |
 | `CHZZK_CHAT_OUTPUT_FORMAT` | 기본 채팅 출력 형식 (jsonl, txt) |
+| `CHZZK_POLL_INTERVAL` | 라이브 상태 폴링 간격 (초, 기본값: 10) |
+| `CHZZK_AUTO_RECONNECT` | 자동 재연결 활성화 (기본값: true, 비활성화: "false") |
 
 ## 예제 코드
 
