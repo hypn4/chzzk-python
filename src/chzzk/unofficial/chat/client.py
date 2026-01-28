@@ -326,10 +326,13 @@ class UnofficialChatClient:
                     new_id,
                 )
 
-                # Close existing WebSocket
+                # Close existing WebSocket and wait for thread to finish
                 if self._ws:
                     self._ws.close()
-                    self._ws = None
+                if self._ws_thread and self._ws_thread.is_alive():
+                    self._ws_thread.join(timeout=5.0)
+                self._ws = None
+                self._ws_thread = None
                 self._connected.clear()
 
                 # Update chat channel ID
@@ -652,6 +655,7 @@ class AsyncUnofficialChatClient:
         max_reconnect_attempts: int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
         reconnect_backoff_base: float = DEFAULT_RECONNECT_BACKOFF_BASE,
         reconnect_backoff_max: float = DEFAULT_RECONNECT_BACKOFF_MAX,
+        reconnect_wait_timeout: float | None = None,
     ) -> None:
         """Initialize the async chat client.
 
@@ -664,6 +668,9 @@ class AsyncUnofficialChatClient:
             max_reconnect_attempts: Maximum reconnection attempts.
             reconnect_backoff_base: Base delay for exponential backoff (seconds).
             reconnect_backoff_max: Maximum backoff delay (seconds).
+            reconnect_wait_timeout: Timeout for waiting for reconnection in run_forever().
+                None means wait indefinitely (default). Set to a positive number to
+                limit the wait time.
         """
         if auth:
             self._auth = auth
@@ -703,6 +710,7 @@ class AsyncUnofficialChatClient:
         self._reconnect_attempt = 0
         self._reconnect_complete = asyncio.Event()
         self._message_loop_task: asyncio.Task[None] | None = None
+        self._reconnect_wait_timeout = reconnect_wait_timeout
 
         # Event handlers
         self._chat_handlers: list[AsyncChatMessageHandler] = []
@@ -1086,13 +1094,23 @@ class AsyncUnofficialChatClient:
                 logger.info("Connection lost, waiting for reconnection...")
                 self._reconnect_complete.clear()
                 try:
-                    # Wait up to 5 minutes for reconnection
-                    await asyncio.wait_for(self._reconnect_complete.wait(), timeout=300)
+                    if self._reconnect_wait_timeout is None:
+                        # Wait indefinitely for reconnection
+                        await self._reconnect_complete.wait()
+                    else:
+                        # Wait with specified timeout
+                        await asyncio.wait_for(
+                            self._reconnect_complete.wait(),
+                            timeout=self._reconnect_wait_timeout,
+                        )
                     if self._ws and self._connected.is_set():
                         logger.info("Reconnection complete, resuming message loop")
                         continue  # Resume with new WebSocket
                 except TimeoutError:
-                    logger.warning("Reconnection wait timeout")
+                    logger.warning(
+                        "Reconnection wait timeout after %.1f seconds",
+                        self._reconnect_wait_timeout,
+                    )
             break
 
         await self.disconnect()
