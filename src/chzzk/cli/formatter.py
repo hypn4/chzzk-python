@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from rich.markup import escape
+
+from chzzk.cli import timezone as tz
 
 if TYPE_CHECKING:
     from chzzk.unofficial import ChatMessage, ChatProfile, DonationMessage
@@ -119,7 +120,7 @@ class ChatFormatter:
 
     def _get_timestamp(self) -> str:
         """Get formatted timestamp string."""
-        return datetime.now().strftime(self.config.time_format)
+        return tz.now().strftime(self.config.time_format)
 
     def _escape_markup(self, text: str) -> str:
         """Escape Rich markup characters in text.
@@ -214,7 +215,7 @@ class ChatFormatter:
         """
         if not message_time:
             return ""
-        dt = datetime.fromtimestamp(message_time / 1000)
+        dt = tz.from_timestamp(message_time / 1000)
         return dt.strftime(self.config.time_format)
 
     def _get_pay_type_str(self, pay_type: str | None) -> str:

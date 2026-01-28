@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from chzzk.cli import timezone as tz
 
 if TYPE_CHECKING:
     from chzzk.unofficial import ChatMessage, DonationMessage
@@ -98,7 +99,7 @@ class JsonlWriter(ChatWriter):
 
         data = {
             "type": "chat",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": tz.now().isoformat(),
             "user_id_hash": msg.user_id_hash,
             "nickname": msg.nickname,
             "content": msg.content,
@@ -111,7 +112,7 @@ class JsonlWriter(ChatWriter):
         """Write a donation message in JSONL format."""
         data = {
             "type": "donation",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": tz.now().isoformat(),
             "user_id_hash": msg.user_id_hash,
             "nickname": msg.nickname,
             "content": msg.content,
@@ -124,7 +125,7 @@ class JsonlWriter(ChatWriter):
         """Write a sent message in JSONL format."""
         data = {
             "type": "sent",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": tz.now().isoformat(),
             "content": content,
         }
         self._file.write(json.dumps(data, ensure_ascii=False) + "\n")
@@ -150,7 +151,7 @@ class TextWriter(ChatWriter):
 
     def write_chat(self, msg: ChatMessage) -> None:
         """Write a chat message in text format."""
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = tz.now().strftime("%H:%M:%S")
         badge_name = None
         if msg.profile:
             # 1. Check profile.badge dict
@@ -175,14 +176,14 @@ class TextWriter(ChatWriter):
 
     def write_donation(self, msg: DonationMessage) -> None:
         """Write a donation message in text format."""
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = tz.now().strftime("%H:%M:%S")
         content = msg.content or ""
         self._file.write(f"[{timestamp}] {msg.pay_amount}원 {msg.nickname}: {content}\n")
         self._file.flush()
 
     def write_sent(self, content: str) -> None:
         """Write a sent message in text format."""
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = tz.now().strftime("%H:%M:%S")
         self._file.write(f"[{timestamp}] > {content}\n")
         self._file.flush()
 
@@ -219,9 +220,9 @@ def generate_chat_log_filename(
             # Parse date from open_date string (format: "YYYY-MM-DD HH:MM:SS")
             date_str = open_date.split()[0].replace("-", "")
         except (IndexError, ValueError):
-            date_str = datetime.now().strftime("%Y%m%d")
+            date_str = tz.now().strftime("%Y%m%d")
     else:
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = tz.now().strftime("%Y%m%d")
 
     # Use live_id if available, otherwise use "offline"
     live_id_str = str(live_id) if live_id else "offline"

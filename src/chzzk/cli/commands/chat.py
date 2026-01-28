@@ -7,7 +7,6 @@ import contextlib
 import json
 import logging
 import signal
-from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -16,6 +15,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
 
+from chzzk.cli import timezone as tz
 from chzzk.cli.formatter import ChatFormatter, FormatConfig
 from chzzk.cli.writers import ChatWriter, OutputFormat, create_writer, generate_chat_log_filename
 from chzzk.constants import StatusText
@@ -57,7 +57,7 @@ def format_chat_message_json(msg: ChatMessage) -> str:
     return json.dumps(
         {
             "type": "chat",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": tz.now().isoformat(),
             "user_id_hash": msg.user_id_hash,
             "nickname": msg.nickname,
             "content": msg.content,
@@ -71,7 +71,7 @@ def format_donation_message_json(msg: DonationMessage) -> str:
     return json.dumps(
         {
             "type": "donation",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": tz.now().isoformat(),
             "user_id_hash": msg.user_id_hash,
             "nickname": msg.nickname,
             "content": msg.content,
@@ -85,7 +85,7 @@ def format_sent_message_json(content: str) -> str:
     return json.dumps(
         {
             "type": "sent",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": tz.now().isoformat(),
             "content": content,
         }
     )
