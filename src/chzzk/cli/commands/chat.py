@@ -9,15 +9,12 @@ import logging
 import signal
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 import typer
 from rich.console import Console
 
 from chzzk.cli.formatter import ChatFormatter, FormatConfig
-from chzzk.cli.logging import setup_logging
-from chzzk.cli.tui import can_run_tui, run_tui
-from chzzk.cli.tui.apps import ChatViewerApp, InteractiveChatApp
 from chzzk.cli.writers import ChatWriter, OutputFormat, create_writer
 from chzzk.constants import StatusText
 from chzzk.exceptions import ChatConnectionError, ChatNotLiveError
@@ -29,22 +26,14 @@ from chzzk.unofficial import (
 )
 from chzzk.unofficial.models.reconnect import ReconnectEvent, ReconnectReason, StatusChangeEvent
 
-if TYPE_CHECKING:
-    from chzzk.cli.config import ConfigManager
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 logger = logging.getLogger("chzzk.cli.chat")
 
 
-def get_config(ctx: typer.Context) -> ConfigManager:
-    """Get ConfigManager from context."""
-    return ctx.obj["config"]
-
-
 def get_auth_cookies(ctx: typer.Context) -> tuple[str | None, str | None]:
     """Get authentication cookies from context."""
-    config = get_config(ctx)
+    config = ctx.obj["config"]
     return config.get_auth_cookies(
         cli_nid_aut=ctx.obj.get("nid_aut"),
         cli_nid_ses=ctx.obj.get("nid_ses"),
@@ -114,13 +103,6 @@ def watch(
             help="Connect to chat even when channel is offline",
         ),
     ] = False,
-    no_tui: Annotated[
-        bool,
-        typer.Option(
-            "--no-tui",
-            help="Disable TUI and use simple console output",
-        ),
-    ] = False,
     output: Annotated[
         Path | None,
         typer.Option(
@@ -144,14 +126,10 @@ def watch(
     By default, only connects when the channel is live.
     Use --offline to connect to chat even when offline.
 
-    By default, displays a full-screen TUI with scrollable messages.
-    Use --no-tui for simple console output.
-
     Use --output to save messages to a file while watching.
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
-    config = get_config(ctx)
     format_config = get_format_config(ctx)
 
     # Create writer if output path specified
@@ -167,35 +145,6 @@ def watch(
             raise typer.Exit(1) from None
 
     try:
-        # Use TUI if available and not disabled/json mode
-        if not json_output and not no_tui and can_run_tui():
-            # Reconfigure logging for TUI mode: disable console output to prevent
-            # logs from corrupting the TUI display, keep file logging if configured
-            setup_logging(
-                ctx.obj.get("log_level", "WARNING"),
-                log_file=ctx.obj.get("log_file"),
-                disable_console=True,
-            )
-
-            viewer_app = ChatViewerApp(
-                config=config,
-                channel_id=channel_id,
-                nid_aut=nid_aut,
-                nid_ses=nid_ses,
-                allow_offline=offline,
-                writer=writer,
-                format_config=format_config,
-            )
-            run_tui(viewer_app)
-
-            if viewer_app.error_message:
-                console.print(f"[red]Error:[/red] {viewer_app.error_message}")
-                raise typer.Exit(1)
-            return
-
-        # Fallback to console output
-        if not no_tui and not json_output:
-            logger.info("TUI mode unavailable, using console mode")
         _run_watch_console(
             channel_id=channel_id,
             nid_aut=nid_aut,
@@ -411,13 +360,6 @@ def send(
             help="Interactive chat mode (send and receive messages)",
         ),
     ] = False,
-    no_tui: Annotated[
-        bool,
-        typer.Option(
-            "--no-tui",
-            help="Disable TUI and use simple console input/output",
-        ),
-    ] = False,
     output: Annotated[
         Path | None,
         typer.Option(
@@ -444,14 +386,10 @@ def send(
     a persistent connection where you can send and receive messages.
     Use --offline to connect even when the channel is offline.
 
-    In interactive mode, displays a full-screen TUI by default.
-    Use --no-tui for simple console input/output.
-
     Use --output to save messages to a file (interactive mode only).
     """
     nid_aut, nid_ses = get_auth_cookies(ctx)
     json_output = ctx.obj.get("json_output", False)
-    config = get_config(ctx)
     format_config = get_format_config(ctx)
 
     if not nid_aut or not nid_ses:
@@ -495,38 +433,7 @@ def send(
 
     try:
         if interactive:
-            # Use TUI if available and not disabled/json mode
-            if not json_output and not no_tui and can_run_tui():
-                # Reconfigure logging for TUI mode: disable console output to prevent
-                # logs from corrupting the TUI display, keep file logging if configured
-                setup_logging(
-                    ctx.obj.get("log_level", "WARNING"),
-                    log_file=ctx.obj.get("log_file"),
-                    disable_console=True,
-                )
-
-                interactive_app = InteractiveChatApp(
-                    config=config,
-                    channel_id=channel_id,
-                    nid_aut=nid_aut,
-                    nid_ses=nid_ses,
-                    allow_offline=offline,
-                    writer=writer,
-                    format_config=format_config,
-                )
-                run_tui(interactive_app)
-
-                if interactive_app.error_message:
-                    console.print(f"[red]Error:[/red] {interactive_app.error_message}")
-                    raise typer.Exit(1)
-                return
-
-            # Fallback to console interactive mode
-            if not no_tui and not json_output:
-                logger.info("TUI mode unavailable, using console mode")
             _run_interactive_chat_console(
-                ctx=ctx,
-                config=config,
                 channel_id=channel_id,
                 nid_aut=nid_aut,
                 nid_ses=nid_ses,
@@ -610,8 +517,6 @@ def _send_single_message(
 
 def _run_interactive_chat_console(
     *,
-    ctx: typer.Context,
-    config: ConfigManager,
     channel_id: str,
     nid_aut: str,
     nid_ses: str,
@@ -620,60 +525,11 @@ def _run_interactive_chat_console(
     writer: ChatWriter | None = None,
     format_config: FormatConfig | None = None,
 ) -> None:
-    """Run interactive chat with console input/output (fallback mode).
+    """Run interactive chat with console input/output.
 
-    For non-JSON mode, uses Textual inline mode for proper cancellation.
-    For JSON mode, uses async stdin reading with timeout on cancellation.
+    Uses async stdin reading with chat message display.
     """
-    if not json_output:
-        # Reconfigure logging for inline TUI mode: disable console output to prevent
-        # logs from corrupting the TUI display, keep file logging if configured
-        setup_logging(
-            ctx.obj.get("log_level", "WARNING"),
-            log_file=ctx.obj.get("log_file"),
-            disable_console=True,
-        )
-
-        # Use inline Textual app for non-JSON mode - this allows proper cancellation
-        interactive_app = InteractiveChatApp(
-            config=config,
-            channel_id=channel_id,
-            nid_aut=nid_aut,
-            nid_ses=nid_ses,
-            allow_offline=offline,
-            inline_mode=True,
-            writer=writer,
-            format_config=format_config,
-        )
-        run_tui(interactive_app, inline=True, inline_height=15)
-
-        if interactive_app.error_message:
-            console.print(f"[red]Error:[/red] {interactive_app.error_message}")
-            raise typer.Exit(1)
-        return
-
-    # JSON mode uses async stdin reading
-    _run_interactive_chat_json(
-        channel_id=channel_id,
-        nid_aut=nid_aut,
-        nid_ses=nid_ses,
-        offline=offline,
-        writer=writer,
-    )
-
-
-def _run_interactive_chat_json(
-    *,
-    channel_id: str,
-    nid_aut: str,
-    nid_ses: str,
-    offline: bool,
-    writer: ChatWriter | None = None,
-) -> None:
-    """Run interactive chat with JSON output (no TUI).
-
-    Uses asyncio.to_thread(input) with timeout on cancellation.
-    """
+    formatter = ChatFormatter(format_config)
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
@@ -681,82 +537,139 @@ def _run_interactive_chat_json(
 
             @chat.on_chat
             async def handle_chat(msg: ChatMessage) -> None:
-                console.print(format_chat_message_json(msg))
+                if json_output:
+                    console.print(format_chat_message_json(msg))
+                else:
+                    console.print(formatter.format_chat(msg))
                 if writer:
                     writer.write_chat(msg)
 
             @chat.on_donation
             async def handle_donation(msg: DonationMessage) -> None:
-                console.print(format_donation_message_json(msg))
+                if json_output:
+                    console.print(format_donation_message_json(msg))
+                else:
+                    console.print(formatter.format_donation(msg))
                 if writer:
                     writer.write_donation(msg)
 
             @chat.on_live
             async def handle_live(event: StatusChangeEvent) -> None:
-                console.print(
-                    json.dumps(
-                        {
-                            "event": "live",
-                            "live_id": event.live_id,
-                            "title": event.live_title,
-                        }
+                if json_output:
+                    console.print(
+                        json.dumps(
+                            {
+                                "event": "live",
+                                "live_id": event.live_id,
+                                "title": event.live_title,
+                            }
+                        )
                     )
-                )
+                else:
+                    title = event.live_title or "제목 없음"
+                    console.print(f"\n[green]방송이 시작되었습니다![/green] {title}")
 
             @chat.on_offline
             async def handle_offline(event: StatusChangeEvent) -> None:
-                console.print(
-                    json.dumps(
-                        {
-                            "event": "offline",
-                            "live_id": event.live_id,
-                            "title": event.live_title,
-                        }
+                if json_output:
+                    console.print(
+                        json.dumps(
+                            {
+                                "event": "offline",
+                                "live_id": event.live_id,
+                                "title": event.live_title,
+                            }
+                        )
                     )
-                )
+                else:
+                    console.print(
+                        "\n[yellow]방송이 종료되었습니다.[/yellow] "
+                        "재시작을 기다리는 중... (Ctrl+C로 종료)"
+                    )
 
             @chat.on_reconnect
             async def handle_reconnect(event: ReconnectEvent) -> None:
-                console.print(
-                    json.dumps(
-                        {
-                            "event": "reconnect",
-                            "reason": event.reason.value,
-                            "old_chat_channel_id": event.old_chat_channel_id,
-                            "new_chat_channel_id": event.new_chat_channel_id,
-                        }
+                if json_output:
+                    console.print(
+                        json.dumps(
+                            {
+                                "event": "reconnect",
+                                "reason": event.reason.value,
+                                "old_chat_channel_id": event.old_chat_channel_id,
+                                "new_chat_channel_id": event.new_chat_channel_id,
+                            }
+                        )
                     )
-                )
+                else:
+                    if event.reason == ReconnectReason.STREAM_RESTARTED:
+                        console.print("[green]채팅에 다시 연결되었습니다.[/green]\n")
+                    else:
+                        console.print(
+                            "[yellow]채팅 채널이 변경되어 다시 연결되었습니다.[/yellow]\n"
+                        )
 
             @chat.on_reconnect_error
             async def handle_reconnect_error(error: Exception) -> None:
-                console.print(json.dumps({"event": "reconnect_error", "error": str(error)}))
+                if json_output:
+                    console.print(json.dumps({"event": "reconnect_error", "error": str(error)}))
+                else:
+                    console.print(f"[red]재연결 실패:[/red] {error}")
 
             # Get live detail first to check status (validates channel exists)
             try:
-                await client.live.get_live_detail(channel_id)
+                live_detail = await client.live.get_live_detail(channel_id)
             except Exception as e:
                 logger.error(f"Failed to get live detail: {e}")
-                console.print(json.dumps({"error": str(e)}))
+                if json_output:
+                    console.print(json.dumps({"error": str(e)}))
+                else:
+                    console.print(f"[red]Error:[/red] {e}")
                 raise typer.Exit(1) from None
 
             # Connect to chat
             try:
-                await chat.connect(channel_id, allow_offline=offline)
-            except ChatNotLiveError:
-                console.print(
-                    json.dumps(
-                        {
-                            "error": "Channel is not live",
-                            "channel_id": channel_id,
-                            "hint": "Use --offline to connect anyway",
-                        }
+                if not json_output:
+                    status_text = StatusText.LIVE if live_detail.is_live else StatusText.OFFLINE
+                    console.print(
+                        f"[green]Connecting to chat...[/green] "
+                        f"({live_detail.channel_name or channel_id} - {status_text})"
                     )
-                )
+
+                await chat.connect(channel_id, allow_offline=offline)
+
+                if not json_output:
+                    console.print(
+                        f"[green]Connected![/green] Interactive chat for "
+                        f"[cyan]{live_detail.channel_name or channel_id}[/cyan]"
+                    )
+                    console.print(
+                        "[dim]Type messages and press Enter to send. Ctrl+C to exit.[/dim]\n"
+                    )
+
+            except ChatNotLiveError:
+                if json_output:
+                    console.print(
+                        json.dumps(
+                            {
+                                "error": "Channel is not live",
+                                "channel_id": channel_id,
+                                "hint": "Use --offline to connect anyway",
+                            }
+                        )
+                    )
+                else:
+                    console.print(
+                        f"[yellow]Channel {channel_id} is not live.[/yellow]\n"
+                        f"Use [cyan]--offline[/cyan] to connect to chat anyway."
+                    )
                 raise typer.Exit(1) from None
+
             except ChatConnectionError as e:
                 logger.error(f"Failed to connect to chat: {e}")
-                console.print(json.dumps({"error": str(e)}))
+                if json_output:
+                    console.print(json.dumps({"error": str(e)}))
+                else:
+                    console.print(f"[red]Connection error:[/red] {e}")
                 raise typer.Exit(1) from None
 
             # Handle graceful shutdown
@@ -777,7 +690,10 @@ def _run_interactive_chat_json(
                         line = await asyncio.to_thread(input)
                         if line and not stop_event.is_set():
                             await chat.send_message(line)
-                            console.print(format_sent_message_json(line))
+                            if json_output:
+                                console.print(format_sent_message_json(line))
+                            else:
+                                console.print(formatter.format_sent(line))
                             if writer:
                                 writer.write_sent(line)
                     except EOFError:
@@ -798,6 +714,8 @@ def _run_interactive_chat_json(
                 # Use timeout to avoid blocking on the uncancellable input() thread
                 with contextlib.suppress(asyncio.CancelledError, TimeoutError):
                     await asyncio.wait_for(input_task, timeout=0.1)
+                if not json_output:
+                    console.print("\n[yellow]Disconnected[/yellow]")
 
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(run_chat())
