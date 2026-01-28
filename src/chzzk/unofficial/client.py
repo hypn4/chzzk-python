@@ -85,8 +85,23 @@ class UnofficialChzzkClient:
         """Check if the client has valid cookies."""
         return self._auth.is_authenticated()
 
-    def create_chat_client(self) -> UnofficialChatClient:
+    def create_chat_client(
+        self,
+        *,
+        auto_reconnect: bool = True,
+        poll_interval: float = 10.0,
+        max_reconnect_attempts: int = 5,
+        reconnect_backoff_base: float = 1.0,
+        reconnect_backoff_max: float = 30.0,
+    ) -> UnofficialChatClient:
         """Create a chat client for WebSocket chat.
+
+        Args:
+            auto_reconnect: Enable automatic reconnection on stream restart.
+            poll_interval: Interval for polling live status in seconds.
+            max_reconnect_attempts: Maximum reconnection attempts.
+            reconnect_backoff_base: Base delay for exponential backoff.
+            reconnect_backoff_max: Maximum backoff delay.
 
         Returns:
             UnofficialChatClient instance.
@@ -99,7 +114,14 @@ class UnofficialChzzkClient:
             >>> chat.connect("channel-id")
             >>> chat.run_forever()
         """
-        return UnofficialChatClient(auth=self._auth)
+        return UnofficialChatClient(
+            auth=self._auth,
+            auto_reconnect=auto_reconnect,
+            poll_interval=poll_interval,
+            max_reconnect_attempts=max_reconnect_attempts,
+            reconnect_backoff_base=reconnect_backoff_base,
+            reconnect_backoff_max=reconnect_backoff_max,
+        )
 
     def close(self) -> None:
         """Close the HTTP client."""
@@ -190,8 +212,26 @@ class AsyncUnofficialChzzkClient:
         """Check if the client has valid cookies."""
         return self._auth.is_authenticated()
 
-    def create_chat_client(self) -> AsyncUnofficialChatClient:
+    def create_chat_client(
+        self,
+        *,
+        auto_reconnect: bool = True,
+        poll_interval: float = 10.0,
+        max_reconnect_attempts: int = 5,
+        reconnect_backoff_base: float = 1.0,
+        reconnect_backoff_max: float = 30.0,
+        reconnect_wait_timeout: float | None = None,
+    ) -> AsyncUnofficialChatClient:
         """Create an async chat client for WebSocket chat.
+
+        Args:
+            auto_reconnect: Enable automatic reconnection on stream restart.
+            poll_interval: Interval for polling live status in seconds.
+            max_reconnect_attempts: Maximum reconnection attempts.
+            reconnect_backoff_base: Base delay for exponential backoff.
+            reconnect_backoff_max: Maximum backoff delay.
+            reconnect_wait_timeout: Timeout for waiting for reconnection.
+                None means wait indefinitely.
 
         Returns:
             AsyncUnofficialChatClient instance.
@@ -204,7 +244,15 @@ class AsyncUnofficialChzzkClient:
             >>> await chat.connect("channel-id")
             >>> await chat.run_forever()
         """
-        return AsyncUnofficialChatClient(auth=self._auth)
+        return AsyncUnofficialChatClient(
+            auth=self._auth,
+            auto_reconnect=auto_reconnect,
+            poll_interval=poll_interval,
+            max_reconnect_attempts=max_reconnect_attempts,
+            reconnect_backoff_base=reconnect_backoff_base,
+            reconnect_backoff_max=reconnect_backoff_max,
+            reconnect_wait_timeout=reconnect_wait_timeout,
+        )
 
     async def close(self) -> None:
         """Close the HTTP client."""
