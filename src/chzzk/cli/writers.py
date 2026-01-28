@@ -192,6 +192,44 @@ class TextWriter(ChatWriter):
             self._file.close()
 
 
+def generate_chat_log_filename(
+    output_dir: Path,
+    channel_id: str,
+    live_id: int | None,
+    open_date: str | None,
+    format: OutputFormat | str,
+) -> Path:
+    """Generate chat log filename based on stream info.
+
+    Args:
+        output_dir: Directory to save the chat log.
+        channel_id: Channel ID.
+        live_id: Live ID (unique per broadcast).
+        open_date: Broadcast open date string (e.g., "2025-01-28 12:00:00").
+        format: Output format (jsonl or txt).
+
+    Returns:
+        Path to the chat log file.
+    """
+    format_enum = OutputFormat(format) if isinstance(format, str) else format
+
+    # Extract date from open_date, fallback to current date
+    if open_date:
+        try:
+            # Parse date from open_date string (format: "YYYY-MM-DD HH:MM:SS")
+            date_str = open_date.split()[0].replace("-", "")
+        except (IndexError, ValueError):
+            date_str = datetime.now().strftime("%Y%m%d")
+    else:
+        date_str = datetime.now().strftime("%Y%m%d")
+
+    # Use live_id if available, otherwise use "offline"
+    live_id_str = str(live_id) if live_id else "offline"
+
+    filename = f"{channel_id}_{live_id_str}_{date_str}.{format_enum.value}"
+    return output_dir / filename
+
+
 def create_writer(path: Path, format: OutputFormat | str) -> ChatWriter:
     """Create a chat writer for the specified format.
 
