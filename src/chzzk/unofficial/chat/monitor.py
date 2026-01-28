@@ -24,6 +24,7 @@ DEFAULT_POLL_INTERVAL_SECONDS: float = 10.0
 DEFAULT_MAX_RECONNECT_ATTEMPTS: int = 5
 DEFAULT_RECONNECT_BACKOFF_BASE: float = 1.0
 DEFAULT_RECONNECT_BACKOFF_MAX: float = 30.0
+DEFAULT_MAX_CONSECUTIVE_FAILURES: int = 10
 
 
 @dataclass
@@ -37,6 +38,10 @@ class MonitorConfig:
         max_reconnect_attempts: Maximum reconnection attempts before giving up.
         reconnect_backoff_base: Base time for exponential backoff.
         reconnect_backoff_max: Maximum backoff time.
+        max_consecutive_failures: Maximum consecutive poll failures before triggering
+            the on_poll_error callback.
+        infinite_retry: If True, continue polling even after max_consecutive_failures
+            is reached (resets counter and continues). If False, stop monitoring.
     """
 
     enabled: bool = True
@@ -45,12 +50,15 @@ class MonitorConfig:
     max_reconnect_attempts: int = DEFAULT_MAX_RECONNECT_ATTEMPTS
     reconnect_backoff_base: float = DEFAULT_RECONNECT_BACKOFF_BASE
     reconnect_backoff_max: float = DEFAULT_RECONNECT_BACKOFF_MAX
+    max_consecutive_failures: int = DEFAULT_MAX_CONSECUTIVE_FAILURES
+    infinite_retry: bool = True
 
 
 # Type aliases for callbacks
 StatusChangeCallback = Callable[[StatusChangeEvent], None]
 ReconnectCallback = Callable[[ReconnectEvent], None]
 ChatChannelChangeCallback = Callable[[str | None, str], None]
+PollErrorCallback = Callable[[int, Exception], None]  # (failure_count, error)
 
 
 @dataclass
@@ -59,6 +67,7 @@ class StatusMonitorState:
 
     last_status: LiveStatusPolling | None = None
     reconnect_attempt: int = 0
+    consecutive_failures: int = 0
     _callbacks: dict[str, list[Callable[..., Any]]] = field(default_factory=dict)
 
     def add_callback(self, event_type: str, callback: Callable[..., Any]) -> None:
@@ -105,6 +114,7 @@ class StatusMonitor:
         self._on_live_callbacks: list[StatusChangeCallback] = []
         self._on_offline_callbacks: list[StatusChangeCallback] = []
         self._on_chat_channel_change_callbacks: list[ChatChannelChangeCallback] = []
+        self._on_poll_error_callbacks: list[PollErrorCallback] = []
 
     @property
     def is_running(self) -> bool:
@@ -131,6 +141,14 @@ class StatusMonitor:
     ) -> ChatChannelChangeCallback:
         """Register callback for when chatChannelId changes."""
         self._on_chat_channel_change_callbacks.append(callback)
+        return callback
+
+    def on_poll_error(self, callback: PollErrorCallback) -> PollErrorCallback:
+        """Register callback for when consecutive poll failures reach the threshold.
+
+        The callback receives the failure count and the last exception.
+        """
+        self._on_poll_error_callbacks.append(callback)
         return callback
 
     def start(self) -> None:
@@ -169,8 +187,35 @@ class StatusMonitor:
                 new_status = self._polling_service.get_live_status(self._channel_id)
                 self._check_status_changes(self._state.last_status, new_status)
                 self._state.last_status = new_status
+                self._state.consecutive_failures = 0  # Reset on success
             except (ChzzkError, OSError) as e:
-                logger.warning("Failed to poll live status: %s", e)
+                self._state.consecutive_failures += 1
+                logger.warning(
+                    "Failed to poll live status (attempt %d): %s",
+                    self._state.consecutive_failures,
+                    e,
+                )
+
+                if self._state.consecutive_failures >= self._config.max_consecutive_failures:
+                    for callback in self._on_poll_error_callbacks:
+                        try:
+                            callback(self._state.consecutive_failures, e)
+                        except Exception as cb_error:
+                            logger.error("Error in on_poll_error callback: %s", cb_error)
+
+                    if not self._config.infinite_retry:
+                        logger.error(
+                            "Max consecutive failures (%d) reached, stopping monitor",
+                            self._config.max_consecutive_failures,
+                        )
+                        break
+                    else:
+                        # Reset counter and continue monitoring
+                        logger.info(
+                            "Max consecutive failures reached, but infinite_retry is enabled. "
+                            "Resetting counter and continuing."
+                        )
+                        self._state.consecutive_failures = 0
 
             # Wait for the poll interval or until stopped
             self._stop_event.wait(timeout=self._config.poll_interval_seconds)
@@ -281,6 +326,7 @@ class AsyncStatusMonitor:
         self._on_live_callbacks: list[Callable[[StatusChangeEvent], Any]] = []
         self._on_offline_callbacks: list[Callable[[StatusChangeEvent], Any]] = []
         self._on_chat_channel_change_callbacks: list[Callable[[str | None, str], Any]] = []
+        self._on_poll_error_callbacks: list[Callable[[int, Exception], Any]] = []
 
     @property
     def is_running(self) -> bool:
@@ -311,6 +357,16 @@ class AsyncStatusMonitor:
     ) -> Callable[[str | None, str], Any]:
         """Register callback for when chatChannelId changes."""
         self._on_chat_channel_change_callbacks.append(callback)
+        return callback
+
+    def on_poll_error(
+        self, callback: Callable[[int, Exception], Any]
+    ) -> Callable[[int, Exception], Any]:
+        """Register callback for when consecutive poll failures reach the threshold.
+
+        The callback receives the failure count and the last exception.
+        """
+        self._on_poll_error_callbacks.append(callback)
         return callback
 
     def start(self) -> None:
@@ -349,10 +405,39 @@ class AsyncStatusMonitor:
                 new_status = await self._polling_service.get_live_status(self._channel_id)
                 await self._check_status_changes(self._state.last_status, new_status)
                 self._state.last_status = new_status
+                self._state.consecutive_failures = 0  # Reset on success
             except asyncio.CancelledError:
                 break
             except (ChzzkError, OSError) as e:
-                logger.warning("Failed to poll live status: %s", e)
+                self._state.consecutive_failures += 1
+                logger.warning(
+                    "Failed to poll live status (attempt %d): %s",
+                    self._state.consecutive_failures,
+                    e,
+                )
+
+                if self._state.consecutive_failures >= self._config.max_consecutive_failures:
+                    for callback in self._on_poll_error_callbacks:
+                        try:
+                            result = callback(self._state.consecutive_failures, e)
+                            if hasattr(result, "__await__"):
+                                await result
+                        except Exception as cb_error:
+                            logger.error("Error in on_poll_error callback: %s", cb_error)
+
+                    if not self._config.infinite_retry:
+                        logger.error(
+                            "Max consecutive failures (%d) reached, stopping monitor",
+                            self._config.max_consecutive_failures,
+                        )
+                        break
+                    else:
+                        # Reset counter and continue monitoring
+                        logger.info(
+                            "Max consecutive failures reached, but infinite_retry is enabled. "
+                            "Resetting counter and continuing."
+                        )
+                        self._state.consecutive_failures = 0
 
             try:
                 await asyncio.sleep(self._config.poll_interval_seconds)
