@@ -1,3 +1,34 @@
+# =============================================================================
+# chzzk-python Docker Compose
+# =============================================================================
+#
+# Setup:
+#   cp .env.example .env
+#   # Edit .env with your CHZZK_CHANNEL_ID
+#
+# Usage:
+#   # QR 로그인으로 쿠키 저장 (최초 1회)
+#   mkdir -p .chzzk .logs && chmod 777 .chzzk .logs
+#   docker compose run --rm -v ./.chzzk:/home/chzzk/.chzzk chzzk auth qr
+#   # 또는 docker run 사용:
+#   docker run --rm -it -v ./.chzzk:/home/chzzk/.chzzk ghcr.io/hypn4/chzzk-python:latest auth qr
+#   # 또는 호스트 사용자 권한으로 실행:
+#   docker run --rm -it --user $(id -u):$(id -g) -v ./.chzzk:/home/chzzk/.chzzk ghcr.io/hypn4/chzzk-python:latest auth qr
+#
+#   # CLI 명령어 실행
+#   docker compose run --rm chzzk --help
+#   docker compose run --rm chzzk live info CHANNEL_ID
+#
+#   # 채팅 모니터링 (백그라운드)
+#   docker compose --profile chat up -d chat-watch
+#   docker compose --profile chat logs -f chat-watch
+#   docker compose --profile chat down
+#
+#   # 대화형 채팅
+#   docker compose --profile interactive run --rm chat-interactive
+#
+# =============================================================================
+
 services:
   chzzk:
     image: ghcr.io/hypn4/chzzk-python:latest
@@ -12,7 +43,9 @@ services:
       - CHZZK_POLL_INTERVAL=${CHZZK_POLL_INTERVAL:-10}
       - CHZZK_AUTO_RECONNECT=${CHZZK_AUTO_RECONNECT:-true}
     volumes:
-      - ./logs:/home/chzzk/logs
+      - ./.logs:/home/chzzk/logs
+      # Uncomment to persist cookies (run: docker compose run --rm chzzk auth qr)
+      # - ./.chzzk:/home/chzzk/.chzzk
     # Override command as needed:
     # command: ["chat", "watch", "CHANNEL_ID"]
     # command: ["chat", "watch", "CHANNEL_ID", "--output-dir", "/home/chzzk/logs"]
@@ -31,13 +64,16 @@ services:
       - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
       - CHZZK_POLL_INTERVAL=${CHZZK_POLL_INTERVAL:-10}
     volumes:
-      - ./logs:/home/chzzk/logs
+      - ./.logs:/home/chzzk/logs
+      # - ./.chzzk:/home/chzzk/.chzzk
     command:
       - chat
       - watch
-      - ${CHZZK_CHANNEL_ID:?CHZZK_CHANNEL_ID is required}
+      - ${CHZZK_CHANNEL_ID:-}
       - --output-dir
       - /home/chzzk/logs
+      - --offline
+      - --auto-reconnect
 
   # Example: Interactive chat mode
   chat-interactive:
@@ -53,11 +89,14 @@ services:
       - CHZZK_NID_SES=${CHZZK_NID_SES:-}
       - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
     volumes:
-      - ./logs:/home/chzzk/logs
+      - ./.logs:/home/chzzk/logs
+      # - ./.chzzk:/home/chzzk/.chzzk
     command:
       - chat
       - send
-      - ${CHZZK_CHANNEL_ID:?CHZZK_CHANNEL_ID is required}
+      - ${CHZZK_CHANNEL_ID:-}
       - --interactive
       - --output-dir
       - /home/chzzk/logs
+      - --offline
+      - --auto-reconnect
