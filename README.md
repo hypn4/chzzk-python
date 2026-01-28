@@ -53,6 +53,30 @@ docker run --rm -it \
 
 Available tags: `latest`, `X.Y.Z`, `X.Y`, `X`
 
+### Docker Compose
+
+```bash
+# Copy and configure environment variables
+cp .env.example .env
+# Edit .env with your credentials and channel ID
+
+# Run CLI commands
+docker compose run --rm chzzk --help
+docker compose run --rm chzzk live info CHANNEL_ID
+
+# Watch chat (background service with auto-restart)
+docker compose --profile chat up -d chat-watch
+
+# Interactive chat mode
+docker compose --profile interactive run --rm chat-interactive
+
+# View logs
+docker compose --profile chat logs -f chat-watch
+
+# Stop services
+docker compose --profile chat down
+```
+
 ## Quick Start
 
 ```python

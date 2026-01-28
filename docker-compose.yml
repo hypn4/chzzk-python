@@ -1,0 +1,63 @@
+services:
+  chzzk:
+    image: ghcr.io/hypn4/chzzk-python:latest
+    container_name: chzzk
+    restart: "no"
+    stdin_open: true
+    tty: true
+    environment:
+      - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
+      - CHZZK_NID_SES=${CHZZK_NID_SES:-}
+      - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
+      - CHZZK_POLL_INTERVAL=${CHZZK_POLL_INTERVAL:-10}
+      - CHZZK_AUTO_RECONNECT=${CHZZK_AUTO_RECONNECT:-true}
+    volumes:
+      - ./logs:/home/chzzk/logs
+    # Override command as needed:
+    # command: ["chat", "watch", "CHANNEL_ID"]
+    # command: ["chat", "watch", "CHANNEL_ID", "--output-dir", "/home/chzzk/logs"]
+    # command: ["live", "info", "CHANNEL_ID"]
+
+  # Example: Watch chat and save to logs
+  chat-watch:
+    image: ghcr.io/hypn4/chzzk-python:latest
+    container_name: chzzk-chat-watch
+    restart: unless-stopped
+    profiles:
+      - chat
+    environment:
+      - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
+      - CHZZK_NID_SES=${CHZZK_NID_SES:-}
+      - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
+      - CHZZK_POLL_INTERVAL=${CHZZK_POLL_INTERVAL:-10}
+    volumes:
+      - ./logs:/home/chzzk/logs
+    command:
+      - chat
+      - watch
+      - ${CHZZK_CHANNEL_ID:?CHZZK_CHANNEL_ID is required}
+      - --output-dir
+      - /home/chzzk/logs
+
+  # Example: Interactive chat mode
+  chat-interactive:
+    image: ghcr.io/hypn4/chzzk-python:latest
+    container_name: chzzk-chat-interactive
+    restart: "no"
+    profiles:
+      - interactive
+    stdin_open: true
+    tty: true
+    environment:
+      - CHZZK_NID_AUT=${CHZZK_NID_AUT:-}
+      - CHZZK_NID_SES=${CHZZK_NID_SES:-}
+      - CHZZK_LOG_LEVEL=${CHZZK_LOG_LEVEL:-INFO}
+    volumes:
+      - ./logs:/home/chzzk/logs
+    command:
+      - chat
+      - send
+      - ${CHZZK_CHANNEL_ID:?CHZZK_CHANNEL_ID is required}
+      - --interactive
+      - --output-dir
+      - /home/chzzk/logs

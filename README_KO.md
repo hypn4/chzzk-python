@@ -53,6 +53,30 @@ docker run --rm -it \
 
 사용 가능한 태그: `latest`, `X.Y.Z`, `X.Y`, `X`
 
+### Docker Compose
+
+```bash
+# 환경 변수 파일 복사 및 설정
+cp .env.example .env
+# .env 파일에 인증 정보와 채널 ID 입력
+
+# CLI 명령어 실행
+docker compose run --rm chzzk --help
+docker compose run --rm chzzk live info CHANNEL_ID
+
+# 채팅 모니터링 (백그라운드 서비스, 자동 재시작)
+docker compose --profile chat up -d chat-watch
+
+# 대화형 채팅 모드
+docker compose --profile interactive run --rm chat-interactive
+
+# 로그 확인
+docker compose --profile chat logs -f chat-watch
+
+# 서비스 종료
+docker compose --profile chat down
+```
+
 ## 빠른 시작
 
 ```python
