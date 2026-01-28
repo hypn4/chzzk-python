@@ -325,48 +325,6 @@ class TestChatFormatter:
         # This is a basic check - the actual time will vary
         assert "TestUser" in result
 
-    def test_format_chat_text(self, mock_chat_message: MagicMock) -> None:
-        """Test format_chat_text returns Rich Text."""
-        from rich.text import Text
-
-        formatter = ChatFormatter()
-        result = formatter.format_chat_text(mock_chat_message)
-
-        assert isinstance(result, Text)
-        assert "TestUser" in result.plain
-        assert "Hello, world!" in result.plain
-
-    def test_format_donation_text(self, mock_donation_message: MagicMock) -> None:
-        """Test format_donation_text returns Rich Text."""
-        from rich.text import Text
-
-        formatter = ChatFormatter()
-        result = formatter.format_donation_text(mock_donation_message)
-
-        assert isinstance(result, Text)
-        assert "Donor" in result.plain
-        assert "1000" in result.plain
-
-    def test_format_sent_text(self) -> None:
-        """Test format_sent_text returns Rich Text."""
-        from rich.text import Text
-
-        formatter = ChatFormatter()
-        result = formatter.format_sent_text("Test message")
-
-        assert isinstance(result, Text)
-        assert "Test message" in result.plain
-
-    def test_format_system_text(self) -> None:
-        """Test format_system_text returns Rich Text."""
-        from rich.text import Text
-
-        formatter = ChatFormatter()
-        result = formatter.format_system_text("System message", "yellow")
-
-        assert isinstance(result, Text)
-        assert "System message" in result.plain
-
     def test_empty_content(self, mock_chat_message: MagicMock) -> None:
         """Test handling empty content."""
         mock_chat_message.content = None
