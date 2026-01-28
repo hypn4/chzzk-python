@@ -346,7 +346,13 @@ except ChatConnectionError as e:
 ### 인증
 
 ```bash
-# 네이버 쿠키 저장 (대화형)
+# 네이버 QR 코드로 로그인 (권장)
+chzzk auth qr
+
+# 타임아웃 설정과 함께 QR 코드 로그인
+chzzk auth qr --timeout 60
+
+# 네이버 쿠키 수동 저장 (대화형)
 chzzk auth login
 
 # 인증 상태 확인

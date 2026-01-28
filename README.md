@@ -346,7 +346,13 @@ A CLI is available for quick access to the unofficial API features.
 ### Authentication
 
 ```bash
-# Save your Naver cookies (interactive)
+# Login via Naver QR code (recommended)
+chzzk auth qr
+
+# Login via Naver QR code with custom timeout
+chzzk auth qr --timeout 60
+
+# Save your Naver cookies manually (interactive)
 chzzk auth login
 
 # Check authentication status
