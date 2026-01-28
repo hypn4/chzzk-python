@@ -539,6 +539,8 @@ chzzk chat send CHANNEL_ID -i --offline
 | `CHZZK_CHAT_OUTPUT_FORMAT` | Default chat output format (jsonl, txt) |
 | `CHZZK_POLL_INTERVAL` | Live status polling interval in seconds (default: 10) |
 | `CHZZK_AUTO_RECONNECT` | Enable auto-reconnection (default: true, set "false" to disable) |
+| `CHZZK_TIMEZONE` | Timezone for chat timestamps and log filenames (default: Asia/Seoul) |
+| `TZ` | System timezone for Docker containers (default: Asia/Seoul) |
 
 ## Examples
 

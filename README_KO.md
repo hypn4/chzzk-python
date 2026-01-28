@@ -539,6 +539,8 @@ chzzk chat send CHANNEL_ID -i --offline
 | `CHZZK_CHAT_OUTPUT_FORMAT` | 기본 채팅 출력 형식 (jsonl, txt) |
 | `CHZZK_POLL_INTERVAL` | 라이브 상태 폴링 간격 (초, 기본값: 10) |
 | `CHZZK_AUTO_RECONNECT` | 자동 재연결 활성화 (기본값: true, 비활성화: "false") |
+| `CHZZK_TIMEZONE` | 채팅 타임스탬프 및 로그 파일명 시간대 (기본값: Asia/Seoul) |
+| `TZ` | Docker 컨테이너 시스템 시간대 (기본값: Asia/Seoul) |
 
 ## 예제 코드
 
