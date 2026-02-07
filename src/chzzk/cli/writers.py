@@ -231,6 +231,40 @@ def generate_chat_log_filename(
     return output_dir / filename
 
 
+def rotate_writer(
+    old_writer: ChatWriter | None,
+    output_dir: Path,
+    channel_id: str,
+    new_live_id: int | None,
+    open_date: str | None,
+    output_format: OutputFormat,
+) -> tuple[ChatWriter, Path]:
+    """Close old writer and create a new one with updated filename.
+
+    Args:
+        old_writer: The existing writer to close (if any).
+        output_dir: Directory to save the chat log.
+        channel_id: Channel ID.
+        new_live_id: New live ID for the filename.
+        open_date: Broadcast open date string.
+        output_format: Output format (jsonl or txt).
+
+    Returns:
+        A tuple of (new ChatWriter, new file Path).
+    """
+    if old_writer:
+        old_writer.close()
+
+    new_path = generate_chat_log_filename(
+        output_dir=output_dir,
+        channel_id=channel_id,
+        live_id=new_live_id,
+        open_date=open_date,
+        format=output_format,
+    )
+    return create_writer(new_path, output_format), new_path
+
+
 def create_writer(path: Path, format: OutputFormat | str) -> ChatWriter:
     """Create a chat writer for the specified format.
 

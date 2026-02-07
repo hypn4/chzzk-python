@@ -17,7 +17,13 @@ from rich.console import Console
 
 from chzzk.cli import timezone as tz
 from chzzk.cli.formatter import ChatFormatter, FormatConfig
-from chzzk.cli.writers import ChatWriter, OutputFormat, create_writer, generate_chat_log_filename
+from chzzk.cli.writers import (
+    ChatWriter,
+    OutputFormat,
+    create_writer,
+    generate_chat_log_filename,
+    rotate_writer,
+)
 from chzzk.constants import StatusText
 from chzzk.exceptions import ChatConnectionError, ChatNotLiveError
 from chzzk.unofficial import (
@@ -216,6 +222,7 @@ def _run_watch_console(
     formatter = ChatFormatter(format_config)
     # Track writer created from output_dir (needs to be closed on exit)
     output_dir_writer: ChatWriter | None = None
+    current_live_id: int | None = None
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
@@ -244,6 +251,49 @@ def _run_watch_console(
 
             @chat.on_live
             async def handle_live(event: StatusChangeEvent) -> None:
+                nonlocal writer, output_dir_writer, current_live_id
+
+                # Rotate log file when live_id changes in output_dir mode
+                if output_dir and event.live_id != current_live_id:
+                    try:
+                        open_date: str | None = None
+                        try:
+                            new_live_detail = await client.live.get_live_detail(channel_id)
+                            open_date = new_live_detail.open_date
+                        except Exception:
+                            logger.warning(
+                                "Failed to get live detail for log rotation, using local date"
+                            )
+
+                        new_writer, new_path = rotate_writer(
+                            old_writer=output_dir_writer,
+                            output_dir=output_dir,
+                            channel_id=channel_id,
+                            new_live_id=event.live_id,
+                            open_date=open_date,
+                            output_format=output_format,
+                        )
+                        output_dir_writer = new_writer
+                        writer = new_writer
+                        current_live_id = event.live_id
+
+                        if json_output:
+                            console.print(
+                                json.dumps(
+                                    {
+                                        "event": "log_rotated",
+                                        "new_file": str(new_path),
+                                        "live_id": event.live_id,
+                                    }
+                                )
+                            )
+                        else:
+                            console.print(f"[dim]Log rotated: {new_path}[/dim]")
+                    except OSError as e:
+                        logger.warning(f"Failed to rotate log file: {e}")
+                        if not json_output:
+                            console.print(f"[yellow]Warning:[/yellow] Log rotation failed: {e}")
+
                 if json_output:
                     console.print(
                         json.dumps(
@@ -316,7 +366,7 @@ def _run_watch_console(
                 raise typer.Exit(1) from None
 
             # Create writer from output_dir if specified (after getting live_detail)
-            nonlocal writer, output_dir_writer
+            nonlocal writer, output_dir_writer, current_live_id
             if output_dir and not writer:
                 try:
                     output_dir.mkdir(parents=True, exist_ok=True)
@@ -329,6 +379,7 @@ def _run_watch_console(
                     )
                     output_dir_writer = create_writer(output_path, output_format)
                     writer = output_dir_writer
+                    current_live_id = live_detail.live_id
                     if not json_output:
                         console.print(f"[dim]Saving chat to: {output_path}[/dim]")
                 except OSError as e:
@@ -652,6 +703,7 @@ def _run_interactive_chat_console(
     formatter = ChatFormatter(format_config)
     # Track writer created from output_dir (needs to be closed on exit)
     output_dir_writer: ChatWriter | None = None
+    current_live_id: int | None = None
 
     async def run_chat() -> None:
         async with AsyncUnofficialChzzkClient(nid_aut=nid_aut, nid_ses=nid_ses) as client:
@@ -680,6 +732,49 @@ def _run_interactive_chat_console(
 
             @chat.on_live
             async def handle_live(event: StatusChangeEvent) -> None:
+                nonlocal writer, output_dir_writer, current_live_id
+
+                # Rotate log file when live_id changes in output_dir mode
+                if output_dir and event.live_id != current_live_id:
+                    try:
+                        open_date: str | None = None
+                        try:
+                            new_live_detail = await client.live.get_live_detail(channel_id)
+                            open_date = new_live_detail.open_date
+                        except Exception:
+                            logger.warning(
+                                "Failed to get live detail for log rotation, using local date"
+                            )
+
+                        new_writer, new_path = rotate_writer(
+                            old_writer=output_dir_writer,
+                            output_dir=output_dir,
+                            channel_id=channel_id,
+                            new_live_id=event.live_id,
+                            open_date=open_date,
+                            output_format=output_format,
+                        )
+                        output_dir_writer = new_writer
+                        writer = new_writer
+                        current_live_id = event.live_id
+
+                        if json_output:
+                            console.print(
+                                json.dumps(
+                                    {
+                                        "event": "log_rotated",
+                                        "new_file": str(new_path),
+                                        "live_id": event.live_id,
+                                    }
+                                )
+                            )
+                        else:
+                            console.print(f"[dim]Log rotated: {new_path}[/dim]")
+                    except OSError as e:
+                        logger.warning(f"Failed to rotate log file: {e}")
+                        if not json_output:
+                            console.print(f"[yellow]Warning:[/yellow] Log rotation failed: {e}")
+
                 if json_output:
                     console.print(
                         json.dumps(
@@ -752,7 +847,7 @@ def _run_interactive_chat_console(
                 raise typer.Exit(1) from None
 
             # Create writer from output_dir if specified (after getting live_detail)
-            nonlocal writer, output_dir_writer
+            nonlocal writer, output_dir_writer, current_live_id
             if output_dir and not writer:
                 try:
                     output_dir.mkdir(parents=True, exist_ok=True)
@@ -765,6 +860,7 @@ def _run_interactive_chat_console(
                     )
                     output_dir_writer = create_writer(output_path, output_format)
                     writer = output_dir_writer
+                    current_live_id = live_detail.live_id
                     if not json_output:
                         console.print(f"[dim]Saving chat to: {output_path}[/dim]")
                 except OSError as e:
