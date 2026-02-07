@@ -87,16 +87,13 @@ class ChzzkEventClient:
     def _setup_handlers(self) -> None:
         """Set up Socket.IO event handlers."""
 
-        @self._sio.on("connect")
         def on_connect() -> None:
             pass
 
-        @self._sio.on("disconnect")
         def on_disconnect() -> None:
             self._connected.clear()
             self._session_key = None
 
-        @self._sio.on("SYSTEM")
         def on_system(data: str | dict[str, Any]) -> None:
             event = SystemEvent.model_validate(_parse_event_data(data))
 
@@ -109,23 +106,27 @@ class ChzzkEventClient:
             for handler in self._system_handlers:
                 handler(event)
 
-        @self._sio.on("CHAT")
         def on_chat(data: str | dict[str, Any]) -> None:
             event = ChatEvent.model_validate(_parse_event_data(data))
             for handler in self._chat_handlers:
                 handler(event)
 
-        @self._sio.on("DONATION")
         def on_donation(data: str | dict[str, Any]) -> None:
             event = DonationEvent.model_validate(_parse_event_data(data))
             for handler in self._donation_handlers:
                 handler(event)
 
-        @self._sio.on("SUBSCRIPTION")
         def on_subscription(data: str | dict[str, Any]) -> None:
             event = SubscriptionEvent.model_validate(_parse_event_data(data))
             for handler in self._subscription_handlers:
                 handler(event)
+
+        self._sio.on("connect", on_connect)
+        self._sio.on("disconnect", on_disconnect)
+        self._sio.on("SYSTEM", on_system)
+        self._sio.on("CHAT", on_chat)
+        self._sio.on("DONATION", on_donation)
+        self._sio.on("SUBSCRIPTION", on_subscription)
 
     @property
     def session_key(self) -> str | None:
@@ -246,7 +247,7 @@ class ChzzkEventClient:
         self._stop_event.clear()
         try:
             while self._sio.connected and not self._stop_event.is_set():
-                self._sio.sleep(0.1)
+                self._sio.sleep(0.1)  # type: ignore[reportArgumentType]
         except KeyboardInterrupt:
             pass
         finally:
@@ -379,17 +380,14 @@ class AsyncChzzkEventClient:
     def _setup_handlers(self) -> None:
         """Set up Socket.IO event handlers."""
 
-        @self._sio.on("connect")
         async def on_connect() -> None:
             pass
 
-        @self._sio.on("disconnect")
         async def on_disconnect() -> None:
             if self._connected_event:
                 self._connected_event.clear()
             self._session_key = None
 
-        @self._sio.on("SYSTEM")
         async def on_system(data: str | dict[str, Any]) -> None:
             event = SystemEvent.model_validate(_parse_event_data(data))
 
@@ -405,7 +403,6 @@ class AsyncChzzkEventClient:
                 if hasattr(result, "__await__"):
                     await result
 
-        @self._sio.on("CHAT")
         async def on_chat(data: str | dict[str, Any]) -> None:
             event = ChatEvent.model_validate(_parse_event_data(data))
             for handler in self._chat_handlers:
@@ -413,7 +410,6 @@ class AsyncChzzkEventClient:
                 if hasattr(result, "__await__"):
                     await result
 
-        @self._sio.on("DONATION")
         async def on_donation(data: str | dict[str, Any]) -> None:
             event = DonationEvent.model_validate(_parse_event_data(data))
             for handler in self._donation_handlers:
@@ -421,13 +417,19 @@ class AsyncChzzkEventClient:
                 if hasattr(result, "__await__"):
                     await result
 
-        @self._sio.on("SUBSCRIPTION")
         async def on_subscription(data: str | dict[str, Any]) -> None:
             event = SubscriptionEvent.model_validate(_parse_event_data(data))
             for handler in self._subscription_handlers:
                 result = handler(event)
                 if hasattr(result, "__await__"):
                     await result
+
+        self._sio.on("connect", on_connect)
+        self._sio.on("disconnect", on_disconnect)
+        self._sio.on("SYSTEM", on_system)
+        self._sio.on("CHAT", on_chat)
+        self._sio.on("DONATION", on_donation)
+        self._sio.on("SUBSCRIPTION", on_subscription)
 
     @property
     def session_key(self) -> str | None:

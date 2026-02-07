@@ -297,7 +297,7 @@ def _generate_qr_ascii(session: str) -> str:
 
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,  # type: ignore[reportAttributeAccessIssue]
         box_size=1,
         border=1,
     )
