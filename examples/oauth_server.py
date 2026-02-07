@@ -16,6 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, redirect, request
+from werkzeug.wrappers import Response
 
 from chzzk import (
     ChzzkAPIError,
@@ -115,7 +116,7 @@ def index() -> str:
 
 
 @app.route("/login")
-def login() -> object:
+def login() -> Response:
     """Redirect to Chzzk authorization page."""
     auth_url, state = client.get_authorization_url()
     print(f"Generated state: {state}")
