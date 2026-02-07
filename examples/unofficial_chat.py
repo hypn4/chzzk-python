@@ -73,7 +73,7 @@ def main() -> None:
     @chat.on_donation
     def on_donation(msg: DonationMessage) -> None:
         """Handle incoming donations."""
-        print(f"[Donation] {msg.nickname} donated {msg.pay_amount}won: {msg.message}")
+        print(f"[Donation] {msg.nickname} donated {msg.pay_amount}won: {msg.content}")
 
     @chat.on_system
     def on_system(data: dict) -> None:
