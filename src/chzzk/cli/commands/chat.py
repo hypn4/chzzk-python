@@ -254,7 +254,7 @@ def _run_watch_console(
                 nonlocal writer, output_dir_writer, current_live_id
 
                 # Rotate log file when live_id changes in output_dir mode
-                if output_dir and event.live_id != current_live_id:
+                if output_dir and event.live_id is not None and event.live_id != current_live_id:
                     try:
                         open_date: str | None = None
                         try:
@@ -310,6 +310,40 @@ def _run_watch_console(
 
             @chat.on_offline
             async def handle_offline(event: StatusChangeEvent) -> None:
+                nonlocal writer, output_dir_writer, current_live_id
+
+                # Rotate log file to offline file when stream ends
+                if output_dir and current_live_id is not None:
+                    try:
+                        new_writer, new_path = rotate_writer(
+                            old_writer=output_dir_writer,
+                            output_dir=output_dir,
+                            channel_id=channel_id,
+                            new_live_id=None,
+                            open_date=None,
+                            output_format=output_format,
+                        )
+                        output_dir_writer = new_writer
+                        writer = new_writer
+                        current_live_id = None
+
+                        if json_output:
+                            console.print(
+                                json.dumps(
+                                    {
+                                        "event": "log_rotated",
+                                        "new_file": str(new_path),
+                                        "live_id": None,
+                                    }
+                                )
+                            )
+                        else:
+                            console.print(f"[dim]Log rotated: {new_path}[/dim]")
+                    except OSError as e:
+                        logger.warning(f"Failed to rotate log file on offline: {e}")
+                        if not json_output:
+                            console.print(f"[yellow]Warning:[/yellow] Log rotation failed: {e}")
+
                 if json_output:
                     console.print(
                         json.dumps(
@@ -328,6 +362,43 @@ def _run_watch_console(
 
             @chat.on_reconnect
             async def handle_reconnect(event: ReconnectEvent) -> None:
+                nonlocal writer, output_dir_writer, current_live_id
+
+                # Compensate for on_live rotation miss (e.g. live_id was None at status change)
+                if output_dir and event.reason == ReconnectReason.STREAM_RESTARTED:
+                    try:
+                        new_live_detail = await client.live.get_live_detail(channel_id)
+                        if (
+                            new_live_detail.live_id is not None
+                            and new_live_detail.live_id != current_live_id
+                        ):
+                            new_writer, new_path = rotate_writer(
+                                old_writer=output_dir_writer,
+                                output_dir=output_dir,
+                                channel_id=channel_id,
+                                new_live_id=new_live_detail.live_id,
+                                open_date=new_live_detail.open_date,
+                                output_format=output_format,
+                            )
+                            output_dir_writer = new_writer
+                            writer = new_writer
+                            current_live_id = new_live_detail.live_id
+
+                            if json_output:
+                                console.print(
+                                    json.dumps(
+                                        {
+                                            "event": "log_rotated",
+                                            "new_file": str(new_path),
+                                            "live_id": new_live_detail.live_id,
+                                        }
+                                    )
+                                )
+                            else:
+                                console.print(f"[dim]Log rotated: {new_path}[/dim]")
+                    except Exception:
+                        logger.warning("Failed to rotate log on reconnect")
+
                 if json_output:
                     console.print(
                         json.dumps(
@@ -735,7 +806,7 @@ def _run_interactive_chat_console(
                 nonlocal writer, output_dir_writer, current_live_id
 
                 # Rotate log file when live_id changes in output_dir mode
-                if output_dir and event.live_id != current_live_id:
+                if output_dir and event.live_id is not None and event.live_id != current_live_id:
                     try:
                         open_date: str | None = None
                         try:
@@ -791,6 +862,40 @@ def _run_interactive_chat_console(
 
             @chat.on_offline
             async def handle_offline(event: StatusChangeEvent) -> None:
+                nonlocal writer, output_dir_writer, current_live_id
+
+                # Rotate log file to offline file when stream ends
+                if output_dir and current_live_id is not None:
+                    try:
+                        new_writer, new_path = rotate_writer(
+                            old_writer=output_dir_writer,
+                            output_dir=output_dir,
+                            channel_id=channel_id,
+                            new_live_id=None,
+                            open_date=None,
+                            output_format=output_format,
+                        )
+                        output_dir_writer = new_writer
+                        writer = new_writer
+                        current_live_id = None
+
+                        if json_output:
+                            console.print(
+                                json.dumps(
+                                    {
+                                        "event": "log_rotated",
+                                        "new_file": str(new_path),
+                                        "live_id": None,
+                                    }
+                                )
+                            )
+                        else:
+                            console.print(f"[dim]Log rotated: {new_path}[/dim]")
+                    except OSError as e:
+                        logger.warning(f"Failed to rotate log file on offline: {e}")
+                        if not json_output:
+                            console.print(f"[yellow]Warning:[/yellow] Log rotation failed: {e}")
+
                 if json_output:
                     console.print(
                         json.dumps(
@@ -809,6 +914,43 @@ def _run_interactive_chat_console(
 
             @chat.on_reconnect
             async def handle_reconnect(event: ReconnectEvent) -> None:
+                nonlocal writer, output_dir_writer, current_live_id
+
+                # Compensate for on_live rotation miss (e.g. live_id was None at status change)
+                if output_dir and event.reason == ReconnectReason.STREAM_RESTARTED:
+                    try:
+                        new_live_detail = await client.live.get_live_detail(channel_id)
+                        if (
+                            new_live_detail.live_id is not None
+                            and new_live_detail.live_id != current_live_id
+                        ):
+                            new_writer, new_path = rotate_writer(
+                                old_writer=output_dir_writer,
+                                output_dir=output_dir,
+                                channel_id=channel_id,
+                                new_live_id=new_live_detail.live_id,
+                                open_date=new_live_detail.open_date,
+                                output_format=output_format,
+                            )
+                            output_dir_writer = new_writer
+                            writer = new_writer
+                            current_live_id = new_live_detail.live_id
+
+                            if json_output:
+                                console.print(
+                                    json.dumps(
+                                        {
+                                            "event": "log_rotated",
+                                            "new_file": str(new_path),
+                                            "live_id": new_live_detail.live_id,
+                                        }
+                                    )
+                                )
+                            else:
+                                console.print(f"[dim]Log rotated: {new_path}[/dim]")
+                    except Exception:
+                        logger.warning("Failed to rotate log on reconnect")
+
                 if json_output:
                     console.print(
                         json.dumps(
