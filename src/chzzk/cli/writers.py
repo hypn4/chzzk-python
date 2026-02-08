@@ -199,6 +199,7 @@ def generate_chat_log_filename(
     live_id: int | None,
     open_date: str | None,
     format: OutputFormat | str,
+    prev_live_id: int | None = None,
 ) -> Path:
     """Generate chat log filename based on stream info.
 
@@ -208,6 +209,7 @@ def generate_chat_log_filename(
         live_id: Live ID (unique per broadcast).
         open_date: Broadcast open date string (e.g., "2025-01-28 12:00:00").
         format: Output format (jsonl or txt).
+        prev_live_id: Previous live ID (used in offline filename to distinguish sessions).
 
     Returns:
         Path to the chat log file.
@@ -224,8 +226,13 @@ def generate_chat_log_filename(
     else:
         date_str = tz.now().strftime("%Y%m%d")
 
-    # Use live_id if available, otherwise use "offline"
-    live_id_str = str(live_id) if live_id else "offline"
+    # Use live_id if available, otherwise use "offline" (with optional prev_live_id)
+    if live_id:
+        live_id_str = str(live_id)
+    elif prev_live_id is not None:
+        live_id_str = f"offline_{prev_live_id}"
+    else:
+        live_id_str = "offline"
 
     filename = f"{channel_id}_{live_id_str}_{date_str}.{format_enum.value}"
     return output_dir / filename
@@ -238,6 +245,7 @@ def rotate_writer(
     new_live_id: int | None,
     open_date: str | None,
     output_format: OutputFormat,
+    prev_live_id: int | None = None,
 ) -> tuple[ChatWriter, Path]:
     """Close old writer and create a new one with updated filename.
 
@@ -248,6 +256,7 @@ def rotate_writer(
         new_live_id: New live ID for the filename.
         open_date: Broadcast open date string.
         output_format: Output format (jsonl or txt).
+        prev_live_id: Previous live ID (used in offline filename to distinguish sessions).
 
     Returns:
         A tuple of (new ChatWriter, new file Path).
@@ -261,6 +270,7 @@ def rotate_writer(
         live_id=new_live_id,
         open_date=open_date,
         format=output_format,
+        prev_live_id=prev_live_id,
     )
     return create_writer(new_path, output_format), new_path
 

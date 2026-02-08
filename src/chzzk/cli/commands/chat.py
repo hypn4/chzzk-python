@@ -322,6 +322,7 @@ def _run_watch_console(
                             new_live_id=None,
                             open_date=None,
                             output_format=output_format,
+                            prev_live_id=current_live_id,
                         )
                         output_dir_writer = new_writer
                         writer = new_writer
@@ -874,6 +875,7 @@ def _run_interactive_chat_console(
                             new_live_id=None,
                             open_date=None,
                             output_format=output_format,
+                            prev_live_id=current_live_id,
                         )
                         output_dir_writer = new_writer
                         writer = new_writer
